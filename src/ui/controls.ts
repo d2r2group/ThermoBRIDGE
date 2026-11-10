@@ -1,0 +1,178 @@
+// The controls (plan §4 items 4–6), adapted from pTerrain's ui/controls.ts. The main row's
+// Metastable button; in the side column the slider and number field for T*, as a fallback for
+// dragging and for keyboard users, and the readout for screen readers, with the lever rule's line
+// while it is on. The System menu is in systemMenu.ts, the Parameters panel in systemPanel.ts,
+// Share in share.ts, the Lever toggle and readout in leverControls.ts, and the logo's snap to the
+// next invariant in logo.ts.
+
+import { nameField, type NamedField } from "../physics/fields";
+import { spokenName } from "./compoundText";
+import { formatComposition, formatTemperature } from "./format";
+import { EYE, EYE_OFF, icon } from "./icons";
+import { leverOf, leverSentence } from "./leverText";
+import type { State, Store } from "./state";
+
+/** The slider and number field that set T*. */
+export function createCutInput(container: HTMLElement, store: Store): void {
+  const root = document.createElement("div");
+  root.className = "cut-input";
+  const label = document.createElement("label");
+  const symbol = document.createElement("i");
+  symbol.textContent = "T";
+  label.append(symbol, "* (K)");
+  const range = document.createElement("input");
+  range.type = "range";
+  range.step = "any";
+  range.id = uniqueId("cut-range");
+  range.setAttribute("aria-label", "Cut temperature T* (K)");
+  label.htmlFor = range.id;
+  const number = document.createElement("input");
+  number.type = "number";
+  number.className = "field-input";
+  number.step = "any";
+  number.inputMode = "decimal";
+  number.setAttribute("aria-label", "Cut temperature T* (K), typed value");
+  root.append(label, range, number);
+  container.append(root);
+
+  range.addEventListener("input", () => store.setCut(range.valueAsNumber));
+  // A value that is not a number leaves the cut where it was and shows it again; one outside the
+  // window shows where it was clamped to. Otherwise the field keeps what was typed.
+  number.addEventListener("change", () => {
+    const raw = number.value;
+    const typed = number.valueAsNumber;
+    store.setCut(typed);
+    const { cut } = store.state;
+    number.value = cut === typed ? raw : cut.toFixed(1);
+  });
+
+  const sync = () => {
+    const { window, cut } = store.state;
+    range.min = String(window.Tmin);
+    range.max = String(window.Tmax);
+    range.value = String(cut);
+    range.setAttribute("aria-valuetext", formatTemperature(cut));
+    number.min = String(window.Tmin);
+    number.max = String(window.Tmax);
+    if (document.activeElement !== number) number.value = cut.toFixed(1);
+  };
+  sync();
+  store.subscribe(sync);
+}
+
+/** The readout's heading: where the cut is, and that the positions are mole fractions of B. */
+export function readoutHeading(state: Readonly<State>): string {
+  return `Fields along the cut at ${formatTemperature(state.cut)}, by mole fraction of ${state.components.B}`;
+}
+
+/**
+ * The Metastable toggle button (plan §4 item 5), which shows or hides the metastable lines, with
+ * an open eye while they are shown and a closed one while they are hidden.
+ */
+export function createMetastableToggle(container: HTMLElement, store: Store): void {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "metastable-toggle btn";
+  const eye = document.createElement("span");
+  eye.className = "eye";
+  // The label is hidden on a phone, where the eye alone fits, so the name is set on the button too.
+  const label = document.createElement("span");
+  label.className = "label";
+  label.textContent = "Metastable";
+  button.append(eye, label);
+  button.setAttribute("aria-label", label.textContent);
+  button.title = "Show or hide the metastable extensions, the spinodals and the unstable curves";
+  button.addEventListener("click", () => store.setShowMetastable(!store.state.showMetastable));
+  container.append(button);
+
+  const sync = () => {
+    const shown = store.state.showMetastable;
+    button.setAttribute("aria-pressed", String(shown));
+    eye.innerHTML = icon(shown ? EYE : EYE_OFF);
+  };
+  sync();
+  store.subscribe(sync);
+}
+
+/** One row of the readout: a field along the cut, from X_B `from` to `to`. */
+export interface ReadoutRow {
+  name: string;
+  kind: NamedField["kind"];
+  from: number;
+  to: number;
+  /** "0 to 0.081: α". */
+  text: string;
+}
+
+/** The fields along the cut, left to right, named as on the diagram (plan §4 item 4). */
+export function readoutRows(state: Readonly<State>): ReadoutRow[] {
+  const naming = state.diagram.naming;
+  return state.atCut.map((f) => {
+    const named = nameField(naming, f);
+    const [from, to] = named.kind === "single" ? named.X : [named.ends[0].X, named.ends[1].X];
+    // A line compound's field has no width.
+    const where =
+      from === to
+        ? `at ${formatComposition(from)}`
+        : `${formatComposition(from)} to ${formatComposition(to)}`;
+    return {
+      name: named.name,
+      kind: named.kind,
+      from,
+      to,
+      text: `${where}: ${spokenName(named.name, naming.compound)}`,
+    };
+  });
+}
+
+/**
+ * The fields along the cut, for screen readers only (plan §4 item 4): on screen the bold values
+ * under the diagram's X axis show them, and those are `aria-hidden`.
+ */
+export function createReadout(container: HTMLElement, store: Store): void {
+  const root = document.createElement("section");
+  root.className = "readout visually-hidden";
+  root.setAttribute("aria-label", "Readout");
+  const heading = document.createElement("p");
+  heading.className = "readout-heading";
+  const list = document.createElement("ul");
+  list.className = "fields";
+  // The lever rule's line (plan §4 item 7), while it is on.
+  const leverLine = document.createElement("p");
+  leverLine.className = "readout-lever";
+  root.append(heading, list, leverLine);
+  container.append(root);
+
+  const sync = () => {
+    const state = store.state;
+    heading.textContent = readoutHeading(state);
+    list.replaceChildren(
+      ...readoutRows(state).map((row) => {
+        const item = document.createElement("li");
+        item.dataset.kind = row.kind;
+        item.textContent = row.text;
+        return item;
+      }),
+    );
+    leverLine.hidden = !state.showLever;
+    leverLine.textContent = state.showLever
+      ? spokenName(leverSentence(leverOf(state)), state.diagram.naming.compound)
+      : "";
+  };
+  sync();
+  store.subscribe((state, prev) => {
+    if (
+      state.atCut !== prev.atCut ||
+      state.cut !== prev.cut ||
+      state.components !== prev.components ||
+      state.showLever !== prev.showLever ||
+      state.X0 !== prev.X0
+    )
+      sync();
+  });
+}
+
+let nextId = 0;
+function uniqueId(prefix: string): string {
+  return `${prefix}-${++nextId}`;
+}

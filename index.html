@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>ThermoBRIDGE</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <script>
+      // Apply the stored theme before the first paint, so the page does not flash.
+      // The key is THEME_KEY in src/ui/theme.ts.
+      try {
+        const theme = localStorage.getItem("thermobridge-theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch {
+        // Storage is blocked: stay light.
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

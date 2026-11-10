@@ -1,0 +1,162 @@
+/* The page layout (plan §4.2): the plots and the column beside or below them, the column's cut
+   input and readouts, and the footer. */
+
+/* The plots and the column with the cut input and the Parameters panel, in one row that wraps.
+   The plots always stay stacked, so their X axes line up (plan §4.2).
+
+   The plots narrow until both fit the window's height, as in pTerrain: their 2:1 plot areas take
+   their height from the plots' width. Of the window, 72 px goes above the plots (the page's
+   padding, the 44 px header and its margin), 94 px to the two plots' top and bottom margins and
+   16 px below them, which leaves P = 100svh − 182 px for the two plot areas, each P wide and
+   P / 2 high; the plots are P plus 80 px of side margins wide. Below 36.4rem of page width the
+   header takes two rows, 52 px more, so P = 100svh − 234 px. Narrowing stops at 160 px high plot
+   areas, their least height, and widening at 55.5rem. The small viewport (svh) keeps the slice in
+   view while the browser's toolbars show.
+
+   The column sits beside the plots wherever the window's width leaves it 19rem next to them, and
+   takes the rest of the row; otherwise it wraps under them, where the plots, alone in their row,
+   keep their height-fitted width or shrink to the page's. On a portrait phone P exceeds the
+   page's width, so the plots fill it. */
+.layout {
+  /* The window's height, the height of all but the plot areas, the plot areas' least width (twice
+     their least height), the side margins and the widest the plots go. */
+  --plots-window: 100vh;
+  --plots-chrome: 182px;
+  --plots-least: 320px;
+  --plots-margins: 80px;
+  --plots-max: 55.5rem;
+  --plots-width: min(
+    var(--plots-max),
+    max(var(--plots-least), var(--plots-window) - var(--plots-chrome)) + var(--plots-margins)
+  );
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  align-items: flex-start;
+}
+
+@supports (height: 1svh) {
+  .layout {
+    --plots-window: 100svh;
+  }
+}
+
+/* On the page's width, as the header's switch (header.css). */
+@container app (max-width: 36.4rem) {
+  .layout {
+    --plots-chrome: 234px;
+  }
+}
+
+.plots {
+  flex: 0 1 var(--plots-width);
+  min-width: 0;
+}
+
+/* The diagram's top margin (MARGIN.top), so the column starts level with its plot area beside the
+   plots, and 12 px below them when it wraps. */
+.controls {
+  display: flex;
+  flex: 1 1 19rem;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: min(19rem, 100%);
+  margin-top: 12px;
+}
+
+/* The lever readout (plan §4 items 6 and 7): X₀ with its slider and number field as T* has
+   them (.cut-input below), then the phases. */
+.lever-readout ul {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.lever-readout li {
+  padding: 0.125rem 0;
+}
+
+.lever-readout .lever-phase {
+  font-weight: 700;
+}
+
+.lever-readout .lever-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* The readout's list, for screen readers only (plan §4 item 4). */
+.readout ul {
+  margin: 0;
+}
+
+/* Cut slider and number field (plan §4.2: a fallback for dragging, and for keyboard users), and
+   X₀'s in the lever readout. */
+.cut-input,
+.x0-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+}
+
+.cut-input label,
+.x0-input label {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.cut-input input[type="range"],
+.x0-input input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  accent-color: var(--fg);
+}
+
+/* The footer (plan §8 row 22), as in pTerrain: centred under the plots and their column, in small
+   muted type; the two links and the button share one line on a phone if they fit. */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.site-footer a {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  color: var(--d2r2);
+}
+
+.site-footer a .icon {
+  flex: none;
+}
+
+.site-footer .repo-link {
+  color: var(--fg);
+}
+
+/* On a phone the two links and the button, with the full gaps and padding, no longer fit one
+   line, so they tighten, as in pTerrain. */
+@media (max-width: 33.5rem) {
+  .site-footer {
+    column-gap: 0.6rem;
+  }
+
+  .model-details-button {
+    padding: 0 0.5rem;
+  }
+
+  .model-details-button .button-math {
+    margin-right: 0.35rem;
+  }
+}

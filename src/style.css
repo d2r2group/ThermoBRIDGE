@@ -1,0 +1,10 @@
+/* Adapted from pTerrain's style.css (plan §4.1, §5): its tokens with the same light and dark
+   values, its header, layout and plot styles, and new tokens for the two-phase checkerboards: a
+   second shade of each phase, and a purple with its own. In six parts, in cascade order. */
+
+@import "./styles/tokens.css";
+@import "./styles/header.css";
+@import "./styles/layout.css";
+@import "./styles/parameters.css";
+@import "./styles/plots.css";
+@import "./styles/overlay.css";

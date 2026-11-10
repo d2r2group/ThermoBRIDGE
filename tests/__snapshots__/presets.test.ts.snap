@@ -1,0 +1,103 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the α grid > pins every panel's events as a regression snapshot 1`] = `
+{
+  "a": [
+    "eutectic 307.098 K: S 0, L 0.4205, S 1",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "b": [
+    "eutectic 461.589 K: S 0.0004, L 0.3877, S 0.9996",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "c": [
+    "eutectic 610.923 K: S 0.0028, L 0.3127, S 0.9972",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "d": [
+    "eutectic 733.894 K: S 0.0079, L 0.1361, S 0.9921",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "e": [
+    "eutectic 788.899 K: S 0.0113, L 0.03, S 0.9887",
+    "melting 800 K: S 0, L 0",
+    "monotectic 1088.722 K: L 0.2437, L 0.7563, S 0.9728",
+    "melting 1200 K: L 1, S 1",
+    "critical 1202.724 K: L 0.5",
+  ],
+  "f": [
+    "eutectic 307.568 K: S 0.0029, L 0.4205, S 0.9971",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "g": [
+    "eutectic 467.178 K: S 0.0248, L 0.3883, S 0.9752",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "h": [
+    "eutectic 634.154 K: S 0.0871, L 0.3189, S 0.9129",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "i": [
+    "minimum 795 K: L 0.1, S 0.1",
+    "peritectic 798.865 K: L 0.1675, S 0.2208, S 0.7792",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "j": [
+    "melting 800 K: L 0, S 0",
+    "critical 902.043 K: S 0.5",
+    "monotectic 1190.056 K: L 0.4115, L 0.5885, S 0.7755",
+    "melting 1200 K: S 1, L 1",
+    "critical 1202.724 K: L 0.5",
+    "maximum 1205 K: L 0.9, S 0.9",
+  ],
+  "k": [
+    "melting 800 K: L 0, S 0",
+    "critical 902.043 K: S 0.5",
+    "melting 1200 K: S 1, L 1",
+    "syntectic 1357.403 K: L 0.1137, S 0.7177, L 0.8863",
+    "critical 1804.085 K: L 0.5",
+  ],
+  "l": [
+    "minimum 480 K: L 0.4, S 0.4",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "m": [
+    "minimum 710 K: L 0.3, S 0.3",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "n": [
+    "melting 800 K: L 0, S 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "o": [
+    "melting 800 K: L 0, S 0",
+    "melting 1200 K: S 1, L 1",
+    "maximum 1290 K: L 0.7, S 0.7",
+  ],
+  "p": [
+    "minimum 795 K: L 0.1, S 0.1",
+    "melting 800 K: S 0, L 0",
+    "melting 1200 K: L 1, S 1",
+  ],
+  "q": [
+    "melting 800 K: L 0, S 0",
+    "melting 1200 K: S 1, L 1",
+    "maximum 1205 K: L 0.9, S 0.9",
+  ],
+  "r": [
+    "melting 800 K: L 0, S 0",
+    "melting 1200 K: S 1, L 1",
+    "maximum 1401.667 K: L 0.6333, S 0.6333",
+  ],
+}
+`;
