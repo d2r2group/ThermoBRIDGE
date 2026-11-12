@@ -1,5 +1,6 @@
 /* The two plots (plan §4 items 1–3 and 7): the axes, the phase diagram with its cut and lever
-   knob, the slice panel, and the guide lines and markers they share. */
+   knob, the slice panel, and the guide lines and markers they share; and the α mode's pad and
+   T_m,B slider in the slice panel's box (§9 phase 17). */
 
 /* Axis labels: the variables T, X and g in italic, units upright, the subscript of X_B upright and
    the superscript of Δg^{M,r} in italic. */
@@ -16,7 +17,8 @@
 .axis-label .sub,
 .field-label .sub,
 .lever-fraction .sub,
-.lever-summary .sub {
+.lever-summary .sub,
+.alpha-summary .sub {
   font-size: 0.8em;
 }
 
@@ -109,9 +111,56 @@
   stroke-linecap: round;
 }
 
-/* The stable critical and congruent points. */
-.phase-diagram .event-point {
+/* The event markers (eventMarkers.ts), each on a halo of the background so it reads over lines
+   and fields: filled in the prefix's colour and outlined in --boundary, or open, filled with the
+   background and outlined in the colour; the critical and congruent points in --boundary. */
+.event-point .halo {
+  fill: var(--bg);
+  stroke: var(--bg);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.event-point .mark {
   fill: var(--boundary);
+  stroke: var(--boundary);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+/* ⊙'s centre dot. */
+.event-point .dot {
+  fill: var(--boundary);
+}
+
+.event-point[data-family="eu"] {
+  --marker: var(--invariant-eu);
+}
+
+.event-point[data-family="mono"] {
+  --marker: var(--invariant-mono);
+}
+
+.event-point[data-family="meta"] {
+  --marker: var(--invariant-meta);
+}
+
+.event-point[data-family="peri"] {
+  --marker: var(--invariant-peri);
+}
+
+.event-point[data-family="syn"] {
+  --marker: var(--invariant-syn);
+}
+
+.event-point:not([data-family="point"]) .mark {
+  fill: var(--marker);
+}
+
+.event-point[data-open="true"] .mark {
+  fill: var(--bg);
+  stroke: var(--marker, var(--boundary));
+  stroke-width: 1.75;
 }
 
 /* Each invariant's temperature, small and muted, beside the right end of its line. */
@@ -415,6 +464,12 @@
   pointer-events: none;
 }
 
+/* On an invariant, the slice panel's three touching points carry its event marker
+   (eventMarkers.ts). */
+.touch-symbol {
+  pointer-events: none;
+}
+
 .touch-marker.stable {
   stroke: var(--boundary);
 }
@@ -446,8 +501,8 @@
 }
 
 /* The phases with their X_B and shares on one line in the plot area's top-left corner, on a halo
-   of the background as the arm labels are. */
-.phase-diagram .lever-summary {
+   of the background as the arm labels are; and so the α mode's values. */
+.phase-diagram :is(.lever-summary, .alpha-summary) {
   fill: var(--fg);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -464,8 +519,14 @@
   font-weight: 700;
 }
 
-.phase-diagram .lever-summary .symbol {
+.phase-diagram :is(.lever-summary, .alpha-summary) .symbol {
   font-style: italic;
+}
+
+/* Hidden while the α knob or the T_m,B slider is held, and shown again once it is let go;
+   still laid out, so that its width can be measured. */
+.alpha-holding .alpha-summary {
+  visibility: hidden;
 }
 
 .phase-diagram .lever-knob {
@@ -517,4 +578,621 @@
   stroke: var(--bg);
   stroke-width: 1.5;
   pointer-events: none;
+}
+
+/* The α mode's box (§9 phases 17 and 19), over the slice panel's, from the plot area's left edge:
+   a row with the lock over the pad and *Line Compound* right of it; under it the pad, a square as
+   high as the box but for a gap above the row and the row itself; the T_m,B slider right of it,
+   as high as the pad; the compound's sliders in the rest. The pad's side, --pad, is set from the
+   plot size. */
+.alpha-box {
+  position: absolute;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: var(--pad) auto minmax(0, 1fr);
+  grid-template-rows: 44px var(--pad);
+  align-content: end;
+  box-sizing: border-box;
+  padding-bottom: 8px;
+  column-gap: 12px;
+}
+
+.alpha-pad {
+  grid-area: 2 / 1;
+}
+
+.alpha-pad svg {
+  display: block;
+  overflow: visible;
+  /* Dragging the knob must not scroll the page (plan §4.2). */
+  touch-action: none;
+  user-select: none;
+}
+
+.alpha-pad .pad-area {
+  fill: transparent;
+  stroke: color-mix(in srgb, var(--muted) 40%, var(--bg));
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+/* The quadrants: (+,+) and (−,−) faintly shaded, a checkerboard; the knob's quadrant, or on an
+   axis the (+,+) or (−,−) one beside it, shaded more: 0, 5, 10 and 15 % of the d2r2 purple. */
+.alpha-pad .pad-quadrant {
+  fill: transparent;
+  pointer-events: none;
+}
+
+.alpha-pad .pad-quadrant.same-sign {
+  fill: color-mix(in srgb, var(--d2r2) 5%, var(--bg));
+}
+
+.alpha-pad .pad-quadrant.active {
+  fill: color-mix(in srgb, var(--d2r2) 10%, var(--bg));
+}
+
+.alpha-pad .pad-quadrant.same-sign.active {
+  fill: color-mix(in srgb, var(--d2r2) 15%, var(--bg));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .alpha-pad .pad-quadrant {
+    transition: fill 150ms;
+  }
+}
+
+.alpha-pad .pad-axis,
+.alpha-pad .pad-tick {
+  stroke: var(--muted);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+  pointer-events: none;
+}
+
+.alpha-pad .pad-tick-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Each quadrant's signs of Δh^{M,L} and Δh^{M,S} in its outer corner, as the tick labels. */
+.alpha-pad .pad-corner {
+  fill: var(--muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* Δh^M < 0 in the eutectic markers' vermilion, > 0 in the monotectic markers' blue
+   (styles/tokens.css). */
+.alpha-pad .pad-corner.negative {
+  fill: var(--invariant-eu);
+}
+
+.alpha-pad .pad-corner.positive {
+  fill: var(--invariant-mono);
+}
+
+.alpha-pad .pad-corner .symbol,
+.alpha-pad .pad-corner .sup {
+  font-style: italic;
+}
+
+.alpha-pad .pad-corner .sup {
+  font-size: 0.8em;
+}
+
+/* α_s and α_l at the axes' ends, bold as the plots' axis labels, the variable in italic. */
+.alpha-pad .pad-label {
+  fill: var(--fg);
+  font-size: 13px;
+  font-weight: 700;
+  /* On a halo of the background, over the axis and the ticks. */
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.alpha-pad .pad-label .symbol {
+  font-style: italic;
+}
+
+.alpha-pad .pad-label .sub {
+  font-size: 0.8em;
+}
+
+/* The seven grid presets, small open dots, each with its name as a tooltip. */
+.alpha-pad .pad-preset {
+  fill: var(--bg);
+  stroke: var(--fg);
+  stroke-width: 1.5;
+}
+
+/* The knob: the cut handle's solid knob, hover, lift, cursor, ping and focus ring (§4 item 1). */
+.alpha-pad .alpha-knob {
+  cursor: grab;
+  outline: none;
+}
+
+.alpha-pad .alpha-knob-target {
+  fill: transparent;
+}
+
+.alpha-pad .alpha-knob-face {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 120ms,
+    filter 120ms;
+}
+
+@media (hover: hover) {
+  .alpha-pad .alpha-knob:hover .alpha-knob-face {
+    transform: scale(1.18);
+  }
+}
+
+.alpha-pad .alpha-dragging .alpha-knob-face {
+  transform: scale(1.18);
+  filter: drop-shadow(0 1px 3px var(--drag-shadow));
+}
+
+.alpha-pad svg.alpha-dragging,
+.alpha-pad svg.alpha-dragging * {
+  cursor: grabbing;
+}
+
+.alpha-pad .alpha-knob-dot {
+  fill: var(--cut);
+}
+
+.alpha-pad .alpha-knob-grip {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.alpha-pad .alpha-knob:focus .alpha-knob-dot {
+  stroke: var(--focus);
+  stroke-width: 3;
+}
+
+/* A position that cannot be computed: the knob outlined in --warning, over the focus ring. */
+.alpha-pad .alpha-knob.failed .alpha-knob-dot {
+  stroke: var(--warning);
+  stroke-width: 3;
+}
+
+.alpha-pad .alpha-knob-ping {
+  display: none;
+  fill: none;
+  stroke: var(--cut);
+  stroke-width: 2;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .alpha-pad .alpha-knob-ping {
+    display: inline;
+    animation: cut-ping 2.4s ease-out 1s infinite both;
+  }
+}
+
+/* The α box's sliders, T_m,B's and the compound's (§9 phases 17 and 19): a label, the vertical
+   range input with its value beside the thumb, and under T_m,B's, T_m,A. The thumb's centre runs
+   from half its 16 px above the track's bottom to half below its top, so the value follows it
+   through --f, the slider's fraction. */
+.alpha-slider {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.25rem;
+  min-height: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.tmb-input {
+  grid-area: 2 / 2;
+}
+
+.alpha-slider sub {
+  font-size: 0.8em;
+}
+
+.slider-track {
+  position: relative;
+  min-height: 0;
+  padding-right: 3rem;
+}
+
+.slider-track input[type="range"] {
+  display: block;
+  width: 44px;
+  height: 100%;
+  margin: 0;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  accent-color: var(--fg);
+  touch-action: none;
+}
+
+.slider-track output {
+  position: absolute;
+  top: calc((1 - var(--f, 0.5)) * (100% - 16px) + 8px);
+  left: 48px;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fg);
+  pointer-events: none;
+}
+
+.tmb-note {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* T_m,B's value sits right above its track, not beside the thumb, which saves the column 3 rem. */
+.tmb-input .slider-track {
+  padding: 1.25rem 0 0;
+}
+
+.tmb-input .slider-track output {
+  top: 0;
+  left: 0;
+  width: 44px;
+  text-align: center;
+  transform: none;
+}
+
+/* The compound's three sliders in the box's empty column, shown while *Line Compound* is ticked.
+   Their labels share a row, so the three tracks start level. */
+.alpha-compound {
+  grid-area: 2 / 3;
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 0.5rem;
+  min-height: 0;
+}
+
+.alpha-box .alpha-compound[hidden] {
+  display: none;
+}
+
+.alpha-compound .alpha-slider {
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+}
+
+.alpha-compound .slider-track {
+  padding-right: 2.25rem;
+}
+
+/* Where the empty column is too narrow for three upright sliders (between a phone and a desktop),
+   they lie flat, one under the other, each a 44 px row with its label left of it, without the
+   unit, and its value above the thumb. Narrower still (a phone), see `.compound-swap` below. */
+.compound-flat .alpha-compound {
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-rows: repeat(3, 44px);
+  row-gap: 4px;
+  column-gap: 0.4rem;
+  align-content: start;
+}
+
+.compound-flat .alpha-compound .alpha-slider {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  grid-template-columns: subgrid;
+  grid-template-rows: none;
+  align-items: center;
+}
+
+.compound-flat .alpha-compound .unit {
+  display: none;
+}
+
+.compound-flat .alpha-compound .slider-track {
+  height: 44px;
+  padding: 0;
+}
+
+.compound-flat .alpha-compound input[type="range"] {
+  width: 100%;
+  height: 44px;
+  writing-mode: horizontal-tb;
+  direction: ltr;
+}
+
+.compound-flat .alpha-compound output {
+  top: 0;
+  left: calc(var(--f, 0.5) * (100% - 16px) + 8px);
+  transform: translateX(-50%);
+}
+
+/* Above the pad, on the box's columns: the lock over the pad; over the empty column, right of the
+   T_m,B slider, *Line Compound*, then the warning. */
+.alpha-lock-row {
+  grid-area: 1 / 1 / 2 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-width: 0;
+}
+
+.alpha-lock-row .alpha-row-right {
+  grid-column: 3 / -1;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+
+:is(.alpha-lock, .alpha-add-compound) {
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+  gap: 0.4rem;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+:is(.alpha-lock, .alpha-add-compound) input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--selected);
+}
+
+.alpha-warning {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  color: var(--warning);
+}
+
+/* Where the empty column is too narrow for *Line Compound* (a phone), it starts over the T_m,B
+   slider instead (alphaPad.ts `ROW_LABEL_MIN`). */
+.row-from-tmb .alpha-lock-row .alpha-row-right {
+  grid-column: 2 / -1;
+}
+
+/* Where it leaves the warning no room beside it, the warning lies over the pad's foot instead
+   (alphaPad.ts `ROW_WARNING_MIN`). */
+.narrow-row .alpha-warning {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  width: var(--pad);
+  padding: 0 4px;
+  font-size: 0.75rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.narrow-row .alpha-warning:not(:empty) {
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+}
+
+/* On a phone the box holds the sliders neither upright nor flat beside the pad: they stand upright
+   in the pad's place, 44 px each, their values above them and without units (the side column's
+   fields give them), and a switch in the empty column shows the pad or them (alphaPad.ts). */
+.alpha-view {
+  display: none;
+}
+
+.compound-swap .alpha-view:not([hidden]),
+.about-key > .alpha-view {
+  grid-area: 2 / 3;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-width: 40px;
+  border: 1px solid var(--muted);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+
+.alpha-view label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.alpha-view label + label {
+  border-top: 1px solid var(--muted);
+}
+
+.alpha-view label:has(input:checked) {
+  color: var(--bg);
+  background: var(--selected);
+}
+
+.alpha-view label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+/* The radio covers its segment, unseen, so that a press anywhere on it is the radio's. */
+.alpha-view input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.alpha-view span {
+  pointer-events: none;
+}
+
+.compound-swap .alpha-compound {
+  grid-area: 2 / 1;
+  grid-template-columns: repeat(3, 44px);
+  justify-content: space-between;
+}
+
+.compound-swap:not(.show-compound) .alpha-compound,
+.compound-swap.show-compound .alpha-pad {
+  display: none;
+}
+
+.compound-swap.show-compound .alpha-lock {
+  visibility: hidden;
+}
+
+.compound-swap .alpha-compound .unit {
+  display: none;
+}
+
+.compound-swap .alpha-compound label {
+  text-align: center;
+}
+
+.compound-swap .alpha-compound .slider-track {
+  padding: 1.25rem 0 0;
+}
+
+.compound-swap .alpha-compound output {
+  top: 0;
+  left: 0;
+  width: 44px;
+  text-align: center;
+  transform: none;
+}
+
+/* With the sliders shown, the warning takes the lock's place above them, not their feet. */
+.compound-swap.show-compound .alpha-warning {
+  top: 8px;
+  bottom: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0;
+}
+
+/* *Line Compound* wraps onto two lines rather than run out of the box. */
+.alpha-add-compound {
+  flex: 0 1 auto;
+  line-height: 1.1;
+}
+
+/* The narrowest box (under about 330 px): tighter gaps, and T_m,B's slider in a 52 px column
+   (alphaPad.ts `TMB_TIGHT`), without T_m,A's note, which the caption gives, so it runs taller. */
+.compound-tight {
+  grid-template-columns: var(--pad) 52px minmax(0, 1fr);
+  column-gap: 6px;
+}
+
+.compound-tight .tmb-note {
+  display: none;
+}
+
+/* Without the note's row and its gap, the slider is exactly as tall as the compound's. */
+.compound-tight .tmb-input {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.compound-tight .alpha-view:not([hidden]) {
+  min-width: 0;
+}
+
+/* Without a compound, the α and T_m,B fields in the box's empty column (alphaPad.ts
+   `FIELDS_MIN`): a name left of each field, with its unit where the column has room, and on a
+   phone the name over the field. */
+.alpha-box-fields {
+  grid-area: 2 / 3;
+  align-self: start;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.alpha-box-fields[hidden] {
+  display: none;
+}
+
+.alpha-box-fields label {
+  display: grid;
+  grid-template-columns: 2.25rem 3.25rem;
+  column-gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.alpha-box-fields sub {
+  font-size: 0.8em;
+}
+
+.alpha-box-fields .unit {
+  display: none;
+}
+
+.alpha-box-fields input {
+  width: 100%;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--fg);
+  appearance: textfield;
+}
+
+.alpha-box-fields input::-webkit-inner-spin-button,
+.alpha-box-fields input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.fields-units .alpha-box-fields label {
+  grid-template-columns: 7rem 5rem;
+}
+
+.fields-units .alpha-box-fields .unit {
+  display: inline;
+}
+
+.fields-units .alpha-box-fields input {
+  appearance: auto;
+}
+
+.fields-stacked .alpha-box-fields {
+  gap: 2px;
+}
+
+.fields-stacked .alpha-box-fields label {
+  grid-template-columns: minmax(0, 1fr);
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.fields-stacked .alpha-box-fields input {
+  height: 28px;
+  min-height: 28px;
+}
+
+/* Three names of 14 px, 2 px clear of fields of 28 px, 2 px apart, fit the phone's 138 px pad. */
+.fields-stacked .alpha-box-fields label > span {
+  padding-bottom: 2px;
+}
+
+.fields-stacked .alpha-box-fields sub {
+  line-height: 0;
+  vertical-align: -0.2em;
 }

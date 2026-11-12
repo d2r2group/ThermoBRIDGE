@@ -48,6 +48,15 @@
   --selected: var(--d2r2);
   /* The cut knob's shadow while dragged. */
   --drag-shadow: rgb(0 0 0 / 0.4);
+  /* The invariant markers, one Okabe–Ito colour per name prefix (eu-, mono-, meta-, peri-,
+     syn-), in both themes and off the phase palette. The three that also outline the open
+     -tectoid markers reach 3.4–5.2 : 1 here and 3.6–5.5 : 1 on the dark background; meta- and
+     syn- only fill markers outlined in --boundary. */
+  --invariant-eu: #d55e00;
+  --invariant-mono: #0072b2;
+  --invariant-meta: #cc79a7;
+  --invariant-peri: #009e73;
+  --invariant-syn: #e69f00;
 
   color-scheme: light;
   font-family: Lato, system-ui, sans-serif;
@@ -90,6 +99,14 @@ input,
 select,
 button {
   font-family: inherit;
+}
+
+/* Where scrollbars take width (main.ts `classic-scrollbars`), their room is kept whether or not
+   the page scrolls: otherwise, where the plots (which fit the window's width) are just tall
+   enough to need one, the scrollbar narrows them, they fit without it, and it comes and goes for
+   ever. */
+html.classic-scrollbars {
+  scrollbar-gutter: stable;
 }
 
 body {

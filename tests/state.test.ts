@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { preset } from "../src/physics/presets";
-import { cutAfterKey } from "../src/ui/cutDrag";
+import { cutAfterKey, snapCut } from "../src/ui/cutDrag";
 import { TAt, yOf } from "../src/ui/geometry";
 import { Store } from "../src/ui/state";
 
@@ -85,6 +85,18 @@ describe("the cut's keyboard steps", () => {
     expect(cutAfterKey("Home", 900, window)).toBe(300);
     expect(cutAfterKey("End", 900, window)).toBe(1500);
     expect(cutAfterKey("a", 900, window)).toBeNull();
+  });
+});
+
+describe("the marked points' magnet", () => {
+  // 1200 K over 400 px: 3 K a pixel, so 6 px is 18 K (a wider radius than the app's, for room).
+  const window = { Tmin: 300, Tmax: 1500 };
+  const size = { width: 700, height: 400 };
+  it("pulls a dragged cut onto the nearest marked point within the radius only", () => {
+    expect(snapCut(650, [634.2, 900], window, size, 6)).toBe(634.2);
+    expect(snapCut(655, [634.2, 900], window, size, 6)).toBe(655);
+    expect(snapCut(890, [634.2, 900], window, size, 6)).toBe(900);
+    expect(snapCut(890, [], window, size, 6)).toBe(890);
   });
 });
 

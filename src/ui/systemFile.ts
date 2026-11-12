@@ -44,6 +44,17 @@ export interface View {
   X0?: number;
 }
 
+/** A link that opens in the α mode (plan §9 phase 18), with *Stay on the axes* ticked or not. */
+export interface AlphaTail {
+  alpha: { locked: boolean };
+}
+
+/** What a link carries after its system: the Δg^M mode's view, or the α mode in place of one. */
+export type LinkTail = View | AlphaTail;
+
+/** Whether `tail` opens the α mode. */
+export const isAlphaTail = (tail: LinkTail): tail is AlphaTail => "alpha" in tail;
+
 /** What a parser returns: the value, or the first problem, for a one-line warning. */
 export type Parsed<T> = { ok: true; value: T } | { ok: false; problem: string };
 
@@ -236,21 +247,29 @@ function linkView(x: number): string {
 /** A decimal number as `String` writes it, or as typed, with or without the leading 0. */
 const NUMBER = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
 
-/** The preset that `system` is in parameters, window, components and name, or null. */
-function presetOf(system: SystemSpec): PresetId | null {
-  const id = matchPreset(system.params, system.window, system.components);
-  return id && PRESETS.find((p) => p.id === id)?.label === system.name ? id : null;
+/**
+ * The preset that `system` is in parameters, components and, unless `alpha`, window and name, or
+ * null.
+ */
+function presetOf(system: SystemSpec, alpha = false): PresetId | null {
+  const id = matchPreset(system.params, alpha ? null : system.window, system.components);
+  if (!id) return null;
+  return alpha || PRESETS.find((p) => p.id === id)?.label === system.name ? id : null;
 }
 
 /**
  * The fragment of a share link, with its `#`: a preset's id when parameters, window, components
  * and name are the preset's, otherwise `1,<name>,<A>,<B>,<6 parameters>[,<Tmin>,<Tmax>]`, the
  * window left out when it is automatic, and with a compound `;C,<X_c>,<Δh_f>,<Δs_f>,<α_γ or l>`
- * (`l` for a line); then `;T,<T*>` and, while the lever rule is on, `;X,<X₀>` for the view.
+ * (`l` for a line); then `;T,<T*>` and, while the lever rule is on, `;X,<X₀>` for the view, or
+ * `;A` for the α mode, `;A,l` with *Stay on the axes* ticked. A link to the α mode gives a
+ * preset's id whatever the name and window, since that mode names its systems from their values
+ * and sets its own window.
  */
-export function toLink(system: SystemSpec, view?: View): string {
+export function toLink(system: SystemSpec, tail?: LinkTail): string {
   const { name, components, params, window, auto } = system;
-  let text: string | null = presetOf(system);
+  const alpha = tail && isAlphaTail(tail) ? tail.alpha : null;
+  let text: string | null = presetOf(system, alpha !== null);
   if (!text) {
     const c = params.compound;
     const numbers = [
@@ -267,9 +286,10 @@ export function toLink(system: SystemSpec, view?: View): string {
       text += `;C,${[...COMPOUND_KEYS.map((k) => linkNumber(c[k])), last].join(",")}`;
     }
   }
-  if (view) {
-    text += `;T,${linkView(view.cut)}`;
-    if (view.X0 !== undefined) text += `;X,${linkView(view.X0)}`;
+  if (alpha) text += alpha.locked ? ";A,l" : ";A";
+  else if (tail && !isAlphaTail(tail)) {
+    text += `;T,${linkView(tail.cut)}`;
+    if (tail.X0 !== undefined) text += `;X,${linkView(tail.X0)}`;
   }
   return `#${text}`;
 }
@@ -282,9 +302,21 @@ function linkValue(text: string, label: string): Parsed<number> {
   return { ok: true, value: x };
 }
 
-/** The view part of a link: `T,<T*>`, then optionally `X,<X₀>`. */
-function parseView(parts: readonly string[]): Parsed<View | undefined> {
+/** The α mode's part of a link: `A`, or `A,l` with *Stay on the axes* ticked. */
+function parseAlpha(part: string): Parsed<AlphaTail> {
+  if (part === "A") return { ok: true, value: { alpha: { locked: false } } };
+  if (part === "A,l") return { ok: true, value: { alpha: { locked: true } } };
+  return { ok: false, problem: "its α mode is not A or A,l" };
+}
+
+/** What follows a link's system: `A` or `A,l`, or the view, `T,<T*>` then optionally `X,<X₀>`. */
+function parseTail(parts: readonly string[]): Parsed<LinkTail | undefined> {
   if (parts.length === 0) return { ok: true, value: undefined };
+  const alphaAt = parts.findIndex((part) => part.split(",")[0] === "A");
+  if (alphaAt >= 0) {
+    if (parts.length > 1) return { ok: false, problem: "it has both a view and the α mode" };
+    return parseAlpha(parts[0]!);
+  }
   const [cutPart, leverPart] = parts as [string, string | undefined];
   const cutItems = cutPart.split(",");
   if (cutItems.length !== 2 || cutItems[0] !== "T") {
@@ -325,19 +357,27 @@ function parseLinkCompound(part: string): Parsed<Compound> {
   return { ok: true, value: { Xc, dhf, dsf, width: "range", alphaG: alphaG.value } };
 }
 
-/** The system and view in a link's fragment (with or without its `#`), or the first problem. */
-export function parseLink(fragment: string): Parsed<{ system: SystemSpec; view?: View }> {
+/**
+ * The system in a link's fragment (with or without its `#`) and its view, or `alpha` for a link
+ * that opens the α mode; or the first problem.
+ */
+export function parseLink(
+  fragment: string,
+): Parsed<{ system: SystemSpec; view?: View; alpha?: AlphaTail["alpha"] }> {
   const text = fragment.replace(/^#/, "");
   if (text === "") return { ok: false, problem: "it is empty" };
   const [head, ...parts] = text.split(";") as [string, ...string[]];
-  // The compound's part, if any, comes first after the system, and then the view's two at most.
+  // The compound's part, if any, comes first after the system, and then the view's two at most,
+  // or the α mode's one.
   const compoundPart = parts[0]?.startsWith("C,") ? parts[0] : null;
   const tail = compoundPart === null ? parts : parts.slice(1);
   if (tail.length > 2) {
     return { ok: false, problem: `it has more than ${compoundPart ? "three" : "two"} ;` };
   }
-  const view = parseView(tail);
-  if (!view.ok) return view;
+  const parsedTail = parseTail(tail);
+  if (!parsedTail.ok) return parsedTail;
+  const tailValue = parsedTail.value;
+  const after = !tailValue ? {} : isAlphaTail(tailValue) ? tailValue : { view: tailValue };
   let compound: Compound | null = null;
   if (compoundPart !== null) {
     const c = parseLinkCompound(compoundPart);
@@ -352,7 +392,7 @@ export function parseLink(fragment: string): Parsed<{ system: SystemSpec; view?:
       if (rest.length > 0) return { ok: false, problem: `the preset id ${first} takes no numbers` };
       if (compound) return { ok: false, problem: `the preset id ${first} takes no compound` };
       const system = spec(p.label, "A", "B", p.params, p.window, false);
-      return { ok: true, value: { system, view: view.value } };
+      return { ok: true, value: { system, ...after } };
     }
     return {
       ok: false,
@@ -385,5 +425,5 @@ export function parseLink(fragment: string): Parsed<{ system: SystemSpec; view?:
   const auto = count === PARAM_KEYS.length;
   const window = auto ? autoWindow(params) : recordOf(WINDOW_KEYS, value);
   const [name, A, B] = names as [string, string, string];
-  return { ok: true, value: { system: spec(name, A, B, params, window, auto), view: view.value } };
+  return { ok: true, value: { system: spec(name, A, B, params, window, auto), ...after } };
 }

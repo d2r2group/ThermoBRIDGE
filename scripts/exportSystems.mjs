@@ -1,4 +1,4 @@
-// Writes the 18 grid systems, the five presets off the grid and the eight compound presets c1–c8
+// Writes the 18 grid systems, the five presets off the grid and the nine compound presets c1–c9
 // (src/physics/presets.ts) as JSON on stdout, with what the app computes for each: its events, the phases it finds just
 // below and just above each event, and its tie lines at a few temperatures. scripts/crosscheck.py
 // reads this and checks it against pycalphad (plan §9 phases 2 and 12). Run from the project directory:

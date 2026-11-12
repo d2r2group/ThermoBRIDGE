@@ -1,6 +1,6 @@
 // The systems of plan §2.1: a grid of 18 α pairs for one pair of components, used by the tests
-// and the cross-check, and the 20 presets of the menu: seven from the grid, five with other T_m,B,
-// and the eight with an intermediate compound, c1–c8 (§9 phases 12–13). Every system uses
+// and the cross-check, and the 21 presets of the menu: seven from the grid, five off it,
+// and the nine with an intermediate compound, c1–c9 (§9 phases 12–13). Every system uses
 // Δs_A = Δs_B = 10 J/(mol·K) and T_m,A = 800 K.
 
 import type { Compound, Params } from "./gibbs";
@@ -66,7 +66,7 @@ export const PANELS: Record<PanelId, System> = {
   r: panel(0, -15),
 };
 
-export type CompoundPresetId = "c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "c7" | "c8";
+export type CompoundPresetId = "c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "c7" | "c8" | "c9";
 
 export type PresetId =
   "n" | "m" | "o" | "m1" | "h" | "c" | "p1" | "p2" | "p3" | "e" | "p4" | "k" | CompoundPresetId;
@@ -122,9 +122,10 @@ const withCompound = (
 const line = (dhf: number, dsf: number) => ({ dhf, dsf, width: "line" as const, alphaG: 0 });
 
 /**
- * The eight compound presets, c1–c8, with (h)'s components and X_c = 0.5: c6 with (k)'s α, c7
- * with (n)'s, where the compound dissolves into the solid with no liquid (§2.1), and c8 with
- * T_m,B = 1800 K and X_c = 0.75, where the solid melts on cooling, into the liquid and AB₃.
+ * The nine compound presets, c1–c9, with (h)'s components and X_c = 0.5: c6 with (k)'s α, c7
+ * with (n)'s, where the compound dissolves into the solid with no liquid (§2.1), c8 with
+ * T_m,B = 1800 K and X_c = 0.75, where the solid melts on cooling, into the liquid and AB₃, and
+ * c9 with (k)'s α and AB₉ beside the solid's dome, which ends in a monotectoid.
  */
 export const COMPOUND_PRESETS: CompoundPreset[] = [
   withCompound("c1", "Congruent compound", line(-6, 0)),
@@ -140,9 +141,15 @@ export const COMPOUND_PRESETS: CompoundPreset[] = [
     { ...line(-13, -3), Xc: 0.75 },
     system(1800, 19, 0, { Tmin: 300, Tmax: 2000 }),
   ),
+  withCompound(
+    "c9",
+    "Monotectoid",
+    { ...line(-2, -1), Xc: 0.9 },
+    system(1200, 30, 15, { Tmin: 750, Tmax: 1900 }),
+  ),
 ];
 
-/** The 20 presets in menu order, group by group, the compound presets last. */
+/** The 21 presets in menu order, group by group, the compound presets last. */
 export const PRESETS: Preset[] = [
   fromGrid("n", "ideal", "Ideal lens"),
   fromGrid("m", "solid-solution", "Lens with a melting dip"),

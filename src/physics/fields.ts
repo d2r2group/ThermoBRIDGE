@@ -220,5 +220,14 @@ export function fields(
     compound:
       params.compound && compoundStable(scanned) ? compoundName(params.compound, components) : null,
   };
+  return named(rules);
+}
+
+/**
+ * The naming of `rules`: they are plain data, which a Web Worker can post (plan §9 phase 15),
+ * while the naming's `name` is a function, rebuilt here on the other side.
+ */
+export function named({ solid, compound }: NameRules): Naming {
+  const rules: NameRules = { solid, compound };
   return { ...rules, name: (hull) => hull.fields.map((f) => nameField(rules, f)) };
 }

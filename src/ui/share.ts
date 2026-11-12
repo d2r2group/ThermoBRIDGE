@@ -22,7 +22,8 @@ export function createShare(bar: HTMLElement, store: Store): void {
   button.type = "button";
   button.className = "share btn";
   setLabel(button, SHARE, "Share");
-  button.title = "Share a link to the applied system and this view";
+  button.title =
+    "Share a link to the applied system and this view, or to the α mode at this system";
   // A label that changes is not announced, so a live status says that the link was copied.
   const status = document.createElement("span");
   status.className = "visually-hidden";
@@ -88,9 +89,10 @@ export function createShare(bar: HTMLElement, store: Store): void {
   const share = async () => {
     hideLink();
     const system = appliedSystem(store.state);
-    const { cut, showLever, X0 } = store.state;
-    const view = showLever ? { cut, X0 } : { cut };
-    const url = location.href.replace(/#.*$/, "") + toLink(system, view);
+    const { mode, cut, showLever, X0, alphaLock } = store.state;
+    const tail =
+      mode === "alpha" ? { alpha: { locked: alphaLock } } : showLever ? { cut, X0 } : { cut };
+    const url = location.href.replace(/#.*$/, "") + toLink(system, tail);
     const phone = matchMedia("(pointer: coarse)").matches;
     if (phone && typeof navigator.share === "function") {
       try {

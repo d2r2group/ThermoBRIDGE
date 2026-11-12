@@ -266,6 +266,9 @@ describe("the System menu", () => {
       "Metatectic: αₗ +19, αₛ 0 kJ/mol; B melts at 1800 K, AB₃, formation Δh −13 kJ/mol, " +
         "Δs −3 J/(mol·K)",
     );
+    expect(presetOptionText(preset("c9"))).toBe(
+      "Monotectoid: αₗ +30, αₛ +15 kJ/mol; AB₉, formation Δh −2 kJ/mol, Δs −1 J/(mol·K)",
+    );
   });
 });
 

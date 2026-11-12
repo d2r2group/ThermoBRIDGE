@@ -1,7 +1,8 @@
 // Dragging a value along one axis of a plot (plan §4.2, §12 CR2), shared by the cut line (T*
 // along y) and the lever rule's knob (X₀ along x): a pointer press on a target starts the drag,
-// pointer capture keeps it going off the target, and the keyboard steps the value while the
-// focus element has focus.
+// pointer capture keeps it going off the target, an optional snap pulls a dragged value (the
+// cut's onto the marked points), and the keyboard steps the value while the focus element has
+// focus.
 
 import { MARGIN } from "./geometry";
 import { perFrame } from "./schedule";
@@ -21,6 +22,8 @@ export interface AxisDragOptions {
   /** The value after pressing `key`, or null for a key that does not move it. */
   keyStep: (key: string, value: number) => number | null;
   onChange: (value: number) => void;
+  /** Applied to a dragged value (not a key's), for a slight magnet; none by default. */
+  snap?: (value: number) => number;
   /** The class `svg` has during a drag, for the `grabbing` cursor and the lifted look. */
   draggingClass: string;
 }
@@ -40,6 +43,7 @@ export function attachAxisDrag({
   value,
   keyStep,
   onChange,
+  snap = (v) => v,
   draggingClass,
 }: AxisDragOptions): void {
   /** The value under the pointer, before the offset. */
@@ -64,12 +68,12 @@ export function attachAxisDrag({
   };
   const onMove = (event: PointerEvent) => {
     if (event.pointerId !== drag?.pointerId) return;
-    moves.push(pointerValue(event) + drag.offset);
+    moves.push(snap(pointerValue(event) + drag.offset));
   };
   const onEnd = (event: PointerEvent) => {
     if (event.pointerId !== drag?.pointerId) return;
     // A release is where the pointer was let go; a cancel keeps the last move.
-    if (event.type === "pointerup") moves.push(pointerValue(event) + drag.offset);
+    if (event.type === "pointerup") moves.push(snap(pointerValue(event) + drag.offset));
     moves.flush();
     drag = null;
     svg.classList.remove(draggingClass);

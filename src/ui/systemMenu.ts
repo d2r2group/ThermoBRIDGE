@@ -1,10 +1,12 @@
 // The System menu in the header's main row (plan §4 item 5, §8 row 15), adapted from pTerrain's
 // Substance menu: the presets grouped by what the solutions do (ideal, solid mixing fully, a solid
 // gap, a liquid gap too, an intermediate compound), then Custom. Choosing a preset applies it at once; the menu names the
-// applied preset, or on a custom system its applied name (plan §8 row 17).
+// applied preset, or on a custom system its applied name (plan §8 row 17). The α mode greys it out
+// (§9 phase 16).
 
 import { compoundName } from "../physics/fields";
 import { PANELS, PRESETS, type Preset, type PresetId } from "../physics/presets";
+import { greyInAlpha } from "./buttons";
 import { signed } from "./format";
 import type { Store } from "./state";
 import { matchPreset } from "./systemFields";
@@ -49,7 +51,6 @@ export function createSystemMenu(container: HTMLElement, store: Store, onCustom:
   root.className = "system-menu";
   const select = document.createElement("select");
   select.setAttribute("aria-label", "System");
-  select.title = "Choose a preset system";
   for (const { group, label } of GROUPS) {
     const optgroup = document.createElement("optgroup");
     optgroup.label = label;
@@ -72,12 +73,14 @@ export function createSystemMenu(container: HTMLElement, store: Store, onCustom:
     shown.textContent = p ? p.label : customOption.text;
   };
 
+  /** In the α mode the menu names a preset the system is, otherwise *Custom*. */
   const sync = () => {
-    const { name, params, window, components } = store.state;
-    const id = matchPreset(params, window, components);
-    customOption.text = id ? CUSTOM_NAME : name;
+    const { name, params, window, components, mode } = store.state;
+    const id = matchPreset(params, mode === "alpha" ? null : window, components);
+    customOption.text = id || mode === "alpha" ? CUSTOM_NAME : name;
     select.value = id ?? CUSTOM;
     showLabel();
+    greyInAlpha(select, root, "Choose a preset system", mode === "alpha");
   };
   sync();
 
@@ -92,7 +95,8 @@ export function createSystemMenu(container: HTMLElement, store: Store, onCustom:
     if (
       state.diagram !== prev.diagram ||
       state.components !== prev.components ||
-      state.name !== prev.name
+      state.name !== prev.name ||
+      state.mode !== prev.mode
     ) {
       sync();
     }

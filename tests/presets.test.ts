@@ -250,7 +250,7 @@ describe("names", () => {
 });
 
 describe("presets", () => {
-  it("are 20 in five groups, seven from the grid, the compound's last, the eutectic the default", () => {
+  it("are 21 in five groups, seven from the grid, the compound's last, the eutectic the default", () => {
     expect(PRESETS.map((p) => `${p.group} ${p.id}`)).toEqual([
       "ideal n",
       "solid-solution m",
@@ -264,7 +264,7 @@ describe("presets", () => {
       "liquid-gap e",
       "liquid-gap p4",
       "liquid-gap k",
-      ...["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"].map((id) => `compound ${id}`),
+      ...["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"].map((id) => `compound ${id}`),
     ]);
     expect(PRESETS.filter((p) => p.id in PANELS)).toHaveLength(7);
     expect(DEFAULT_PRESET).toBe("h");

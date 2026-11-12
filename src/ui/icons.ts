@@ -48,6 +48,10 @@ export const BALANCE =
 /** Path data of the up/down chevrons on the cut handle's 11 px knob, centered on (0, 0). */
 export const HANDLE_GRIP = "M-3.5,-1.5L0,-5L3.5,-1.5M-3.5,1.5L0,5L3.5,1.5";
 
+/** Path data of the four chevrons on the α knob, which moves both ways, centered on (0, 0). */
+export const ALPHA_GRIP =
+  "M-2,-4.5L0,-6.5L2,-4.5M-2,4.5L0,6.5L2,4.5M-4.5,-2L-6.5,0L-4.5,2M4.5,-2L6.5,0L4.5,2";
+
 /** An icon as SVG markup, hidden from screen readers, `size` CSS px square. */
 export function icon(body: string, size = 18): string {
   return (

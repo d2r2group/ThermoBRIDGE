@@ -53,7 +53,7 @@ const PARAM_KEYS = ["TmA", "TmB", "dsA", "dsB", "alphaL", "alphaS"] as const;
 
 /** The range of X_c. */
 export const XC_LIMITS = [0.05, 0.95] as const;
-/** The range of Δh_f, kJ/mol, and of Δs_f, J/(mol·K): a choice that covers c1–c8. */
+/** The range of Δh_f, kJ/mol, and of Δs_f, J/(mol·K): a choice that covers c1–c9. */
 export const DHF_LIMITS = [-30, 10] as const;
 export const DSF_LIMITS = [-20, 10] as const;
 /** The lowest α_γ, kJ/mol; α_γ must also be negative. */

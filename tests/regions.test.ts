@@ -9,11 +9,12 @@ import {
   RasterCache,
   REGION_KINDS,
   regionRaster,
-  RowHullCache,
   rowHulls,
+  rowHullsOf,
   rowT,
   type RegionKind,
 } from "../src/ui/regions";
+import { computeDiagram } from "../src/ui/state";
 
 const COLS = 200;
 const ROWS = 120;
@@ -159,6 +160,16 @@ const SAMPLES: Record<PresetId, [number, number, RegionKind][]> = {
     [0.8, 1750, "S"],
     [0.5, 1950, "L"],
   ],
+  c9: [
+    [0.5, 780, "S+C"],
+    [0.95, 780, "S+C"],
+    [0.2, 870, "S"],
+    [0.5, 870, "S+S"],
+    [0.7, 895, "S"],
+    [0.3, 1000, "L+S"],
+    [0.8, 1000, "S"],
+    [0.3, 1250, "L+S"],
+  ],
 };
 
 describe("regionRaster", () => {
@@ -189,12 +200,13 @@ describe("regionRaster", () => {
     },
   );
 
-  it("shares one computation of the row hulls per system, window and row count", () => {
-    const cache = new RowHullCache();
+  it("shares one computation of the row hulls per diagram and row count", () => {
     const { params, window } = preset("h");
-    const hulls = cache.get(params, window, ROWS);
-    expect(cache.get(params, window, ROWS)).toBe(hulls);
-    expect(cache.get(params, window, ROWS + 1)).not.toBe(hulls);
+    const diagram = computeDiagram(params, window);
+    const hulls = rowHullsOf(diagram, ROWS);
+    expect(rowHullsOf(diagram, ROWS)).toBe(hulls);
+    expect(rowHullsOf(computeDiagram(params, window), ROWS)).not.toBe(hulls);
+    expect(rowHullsOf(diagram, ROWS + 1)).not.toBe(hulls);
     const rasters = new RasterCache();
     const kinds = rasters.get(hulls, COLS);
     expect(rasters.get(hulls, COLS)).toBe(kinds);

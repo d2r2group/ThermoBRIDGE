@@ -177,19 +177,19 @@ export function cleanComponent(name: string, end: keyof Components): string {
 
 /**
  * The preset that this system is, or null for a custom one: the same parameters (the compound
- * included), window and the default component names, which a preset applies.
+ * included), window and the default component names, which a preset applies. A null `window`
+ * matches any, as in the α mode, whose window is its own.
  */
 export function matchPreset(
   params: Params,
-  window: PlotWindow,
+  window: PlotWindow | null,
   components: Components,
 ): PresetId | null {
   if (components.A !== DEFAULT_COMPONENTS.A || components.B !== DEFAULT_COMPONENTS.B) return null;
   const match = PRESETS.find(
     (p) =>
       sameParams(params, p.params) &&
-      window.Tmin === p.window.Tmin &&
-      window.Tmax === p.window.Tmax,
+      (window === null || (window.Tmin === p.window.Tmin && window.Tmax === p.window.Tmax)),
   );
   return match?.id ?? null;
 }

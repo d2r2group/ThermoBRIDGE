@@ -166,6 +166,17 @@ html:has(.overlay[open]) {
   white-space: nowrap;
 }
 
+.marker-legend td:first-child {
+  vertical-align: middle;
+}
+
+/* One diagram marker at its size on the diagram. */
+.event-marker-key {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
 .preset-table .value {
   display: block;
   font-variant-numeric: tabular-nums;
@@ -235,6 +246,21 @@ html:has(.overlay[open]) {
 /* In the footer's small type. */
 .about-key > .model-details-button {
   font-size: 0.85rem;
+}
+
+/* The α pad's copy, scaled to the key's column, and the sliders', as high. */
+.about-key > .alpha-pad svg {
+  width: 10rem;
+  height: 10rem;
+}
+
+/* Too small to read at that scale, and the ±30 would stick out of the column. */
+.about-key > .alpha-pad :is(.pad-tick-label, .pad-corner) {
+  display: none;
+}
+
+.about-key > :is(.tmb-input, .alpha-compound) {
+  height: 10rem;
 }
 
 .about-key > .apply,

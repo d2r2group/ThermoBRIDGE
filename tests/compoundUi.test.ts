@@ -7,7 +7,7 @@ import { COMPOUND } from "../src/physics/gibbs";
 import { preset, type PresetId } from "../src/physics/presets";
 import { compoundPointAt, distinctTouches, relativeG, slice, sliceXs } from "../src/physics/slice";
 import { nameParts, spokenName } from "../src/ui/compoundText";
-import { markedPointsOf } from "../src/ui/diagram/linesLayer";
+import { markedPointsOf } from "../src/ui/diagram/eventMarkers";
 import { compoundLines, COMPOUND_LABEL_GAP, placeCompoundLabel } from "../src/ui/fieldLabels";
 import { leverArms, leverOf, leverRows, leverSentence } from "../src/ui/leverText";
 import { snapTitle } from "../src/ui/logo";
@@ -66,9 +66,13 @@ describe("a line compound's line on the diagram", () => {
 });
 
 describe("the markers and the logo's snap", () => {
-  it("mark a congruent transformation and a compound's congruent melting point", () => {
+  it("mark a congruent transformation, a compound's congruent melting point and the invariants", () => {
     expect(markedPointsOf(scanOf("c7").events).map((e) => e.kind)).toEqual(["congruent"]);
-    expect(markedPointsOf(scanOf("c1").events).map((e) => e.kind)).toEqual(["maximum"]);
+    expect(markedPointsOf(scanOf("c1").events).map((e) => e.kind)).toEqual([
+      "eutectic",
+      "eutectic",
+      "maximum",
+    ]);
   });
 
   it("names the new invariant kinds in the logo's tooltip", () => {

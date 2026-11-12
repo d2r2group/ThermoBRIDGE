@@ -4,7 +4,8 @@
 // theme (header.css sets its "ΔG", "Thermo" and M emblem in the d2r2 purple) and needs no web
 // fonts. It replaces the text heading and keeps "ThermoBRIDGE" as its name. It is also a button
 // that snaps the cut to the next stable invariant above it, wrapping round to the lowest, as its
-// tooltip says, where pTerrain's snaps to the triple point.
+// tooltip says, where pTerrain's snaps to the triple point. The α mode has no cut, so there it
+// does nothing (§9 phase 16).
 
 import logo from "../assets/logo.svg?raw";
 import type { DiagramEvent } from "../physics/events";
@@ -14,6 +15,14 @@ import { nextInvariant, type Store } from "./state";
 /** What the name's "BRIDGE" stands for, as the logo's tooltip and the About overlay spell it. */
 export const BRIDGE_MEANING = "Binary Regular-solution Interactive Diagram Generator for Education";
 
+/** An invariant by its kind and temperature, "eutectic, 634 K". */
+export function invariantText(e: DiagramEvent): string {
+  return `${e.kind}, ${formatInvariantT(e.T)}`;
+}
+
+/** What the logo says in the α mode, which has no cut to snap. */
+export const NO_SNAP_IN_ALPHA = "The α mode has no cut to snap to an invariant";
+
 /**
  * What clicking the logo does, under the name in its tooltip and as its description: the
  * invariant it snaps the cut to next, by kind ("Snap the cut to the
@@ -22,7 +31,7 @@ export const BRIDGE_MEANING = "Binary Regular-solution Interactive Diagram Gener
 export function snapTitle(events: readonly DiagramEvent[], cut: number): string {
   const target = nextInvariant(events, cut);
   return target
-    ? `Snap the cut to the ${target.kind}, ${formatInvariantT(target.T)}`
+    ? `Snap the cut to the ${invariantText(target)}`
     : "This system has no invariant to snap the cut to";
 }
 
@@ -47,9 +56,9 @@ export function createLogo(container: HTMLElement, store: Store): void {
   // The tooltip spells out the name above what a click does; screen readers get only the latter,
   // as the button's description (the About overlay spells out the name for them).
   const sync = () => {
-    const { diagram, cut } = store.state;
-    const target = nextInvariant(diagram.scan.events, cut);
-    const snap = snapTitle(diagram.scan.events, cut);
+    const { diagram, cut, mode } = store.state;
+    const target = mode === "dg" ? nextInvariant(diagram.scan.events, cut) : null;
+    const snap = mode === "dg" ? snapTitle(diagram.scan.events, cut) : NO_SNAP_IN_ALPHA;
     button.title = `ThermoBRIDGE: ${BRIDGE_MEANING}\n${snap}`;
     button.setAttribute("aria-description", snap);
     // Not `disabled`, which would also dim the logo.

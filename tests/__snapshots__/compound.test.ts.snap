@@ -56,5 +56,14 @@ exports[`the events with a compound > pins every compound preset's events as a r
     "melting 1800 K: S 1, L 1",
     "maximum 1906.579 K: L 0.7632, S 0.7632",
   ],
+  "c9": [
+    "melting 800 K: L 0, S 0",
+    "monotectoid 847.155 K: S 0.2916, S 0.7084, C 0.9",
+    "critical 902.043 K: S 0.5",
+    "congruent 904.699 K: S 0.9, C 0.9",
+    "melting 1200 K: S 1, L 1",
+    "syntectic 1357.403 K: L 0.1137, S 0.7177, L 0.8863",
+    "critical 1804.085 K: L 0.5",
+  ],
 }
 `;

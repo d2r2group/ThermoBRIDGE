@@ -29,7 +29,7 @@ export function createFileActions(
   const actionButton = (body: string, text: string, title: string) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "btn";
+    button.className = `btn ${text.toLowerCase()}`;
     setLabel(button, body, text);
     button.title = title;
     actions.append(button);

@@ -9,12 +9,15 @@ export type LabelPart = string | { symbol: string; sub?: string; sup?: string };
 
 /**
  * The axis labels: T (K), X_B and Δg^{M,r} (kJ/mol), the slice panel's g − r: the Gibbs energy of
- * mixing from the reference line r through the stable pure components at T (Model Details).
+ * mixing from the reference line r through the stable pure components at T (Model Details); and
+ * the α pad's α_s and α_l (kJ/mol).
  */
 export const AXIS_LABELS = {
   T: [{ symbol: "T" }, " (K)"],
   X: [{ symbol: "X", sub: "B" }],
   G: ["Δ", { symbol: "g", sup: "M,r" }, " (kJ/mol)"],
+  alphaS: [{ symbol: "α", sub: "s" }, " (kJ/mol)"],
+  alphaL: [{ symbol: "α", sub: "l" }, " (kJ/mol)"],
 } as const satisfies Record<string, readonly LabelPart[]>;
 
 const SVG_NS = "http://www.w3.org/2000/svg";

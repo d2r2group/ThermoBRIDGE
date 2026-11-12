@@ -20,15 +20,20 @@ line. One-phase fields are shaded in the phase's color and two-phase fields in
 a checkerboard per kind of field, and the panel repeats that shading under the
 envelope. Dotted lines join each tangent point to the boundary above it, and
 its $X_B$ is written in bold under the diagram.
+Each invariant carries a marker: ▼ where one phase splits into two and ▲ where
+two form one, colored by kind, filled with liquid and open without; Model
+Details has the key.
 
 ## Using it
 
-- **System** picks one of 20 presets in five groups, or **Custom**, which
+- **System** picks one of 21 presets in five groups, or **Custom**, which
   opens **Parameters**.
 - **ⓘ**, beside the logo, opens a short overview of the app and of every
   button; the **moon/sun** switches the theme.
 - **Move the cut** by dragging its line or handle, with the slider or number
-  field, or with the keyboard on its handle. Clicking the **logo** snaps it to
+  field, or with the keyboard on its handle. A drag is pulled slightly onto the
+  temperature of any marked point (an invariant, a critical point, a congruent
+  minimum or maximum). Clicking the **logo** snaps it to
   the next stable invariant (eutectic, peritectic, monotectic, …).
 - **Lever** puts a knob at the overall composition $X_0$ on the cut. In a
   two-phase field the tie line is drawn bold with each phase's share; $X_0$
@@ -40,8 +45,26 @@ its $X_B$ is written in bold under the diagram.
   compound or one with a range) and the window (fitted automatically while
   **auto** is ticked). Edits take effect on **Apply**, and only if they pass
   the validity checks.
+- **$\Delta g^M$ | α**, right of ⓘ, switches to the **α mode**, which drops the cut and the slice
+  for a pad of $\alpha_\mathrm{s}$ (across) and $\alpha_\mathrm{l}$ (up) and
+  a $T_\mathrm{m,B}$ slider: dragging the knob moves through the systems and
+  redraws the diagram as it goes, anywhere on the pad or, with **Stay on the
+  axes** ticked, on the axes only. The open dots mark the grid presets, and a
+  drag is pulled slightly onto them. Each quadrant's corner gives the signs of
+  $\Delta h^{M,\mathrm{L}}$ and $\Delta h^{M,\mathrm{S}}$ (those of
+  $\alpha_\mathrm{l}$ and $\alpha_\mathrm{s}$; red below 0, blue above), and
+  the knob's quadrant is shaded. Once the knob is let go, the diagram's top-left corner gives
+  $\alpha_\mathrm{s}$, $\alpha_\mathrm{l}$, $T_\mathrm{m,A}$ and
+  $T_\mathrm{m,B}$. **Line Compound** adds a line compound with three more
+  sliders, for its $X_\mathrm{c}$ (on eleven stoichiometric stops, A₉B to
+  AB₉), $\Delta h_\mathrm{f}$ and $\Delta s_\mathrm{f}$, so that the knob
+  also moves through its reactions (`#c1;A`); on a phone they take the pad's
+  place, behind an α | compound switch. Without a compound, number fields for
+  $\alpha_\mathrm{s}$, $\alpha_\mathrm{l}$ and $T_\mathrm{m,B}$ sit right
+  of the slider.
 - **Export** / **Import** save and load a system as JSON; **Share** makes a
-  link that opens the same system, cut and lever (e.g. `#h;T,700;X,.3`).
+  link that opens the same system, cut and lever (e.g. `#h;T,700;X,.3`), or,
+  in the α mode, the same system in the α mode (`#h;A`).
 - **Model Details**, in the footer, shows the model's equations, the presets,
   the limits and the numerics.
 

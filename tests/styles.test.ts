@@ -92,6 +92,19 @@ describe("palette", () => {
     ]) {
       expect(contrast(theme[key]!, bg), key).toBeGreaterThanOrEqual(3);
     }
+    // The colours that also outline the open -tectoid markers.
+    for (const key of ["--invariant-eu", "--invariant-mono", "--invariant-peri"]) {
+      expect(contrast(theme[key]!, bg), key).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("gives the five invariant prefixes five distinct colours, off the phase palette", () => {
+    const keys = ["eu", "mono", "meta", "peri", "syn"].map((p) => `--invariant-${p}`);
+    const colours = keys.map((k) => light[k]);
+    expect(new Set(colours).size).toBe(5);
+    for (const phase of ["--phase-solid", "--phase-liquid", "--phase-compound"]) {
+      expect(colours).not.toContain(light[phase]);
+    }
   });
 });
 
@@ -100,11 +113,11 @@ describe("header and layout breakpoints", () => {
     expect(sheet("header.css")).toMatch(/#app\s*{\s*container:\s*app\s*\/\s*inline-size;/);
     const header = sheet("header.css");
     expect(header).not.toMatch(/@media[^{]*width/);
-    expect(header).toContain("@container app (max-width: 52.45rem)");
-    expect(header).toContain("@container app (max-width: 36.4rem)");
+    expect(header).toContain("@container app (max-width: 58.95rem)");
+    expect(header).toContain("@container app (max-width: 42.9rem)");
     // The footer's tightening stays a media query; the plots' height fit follows the header.
     expect(sheet("layout.css")).toMatch(
-      /@container app \(max-width: 36\.4rem\) {\s*\.layout {\s*--plots-chrome: 234px;/,
+      /@container app \(max-width: 42\.9rem\) {\s*\.layout {\s*--plots-chrome: 234px;/,
     );
   });
 });

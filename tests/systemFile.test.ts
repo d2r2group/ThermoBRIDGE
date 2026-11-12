@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { autoWindow } from "../src/physics/autoWindow";
-import { preset, PRESETS, type PresetId } from "../src/physics/presets";
+import { compoundPreset, preset, PRESETS, type PresetId } from "../src/physics/presets";
+import { alphaPointOf, alphaSystem } from "../src/ui/alphaPoint";
 import { DEFAULT_COMPONENTS, Store } from "../src/ui/state";
 import { cleanComponent } from "../src/ui/systemFields";
 import {
+  appliedSystem,
   cleanName,
   fileName,
   parseLink,
@@ -320,6 +322,44 @@ describe("share link", () => {
     expect(toLink({ ...custom, auto: true }, { cut: 700 })).toHaveLength(31 + 6);
   });
 
+  it("opens the α mode with ;A, or ;A,l with the lock ticked, in place of a view", () => {
+    const alphaOf = (locked: boolean) => ({ alpha: { locked } });
+    // In the α mode the name follows the values, so a preset is its id whatever the name.
+    const h = ofPreset("h", { name: "αₗ 0, αₛ +15, Tₘ,B 1200 K" });
+    expect(toLink(h, alphaOf(false))).toBe("#h;A");
+    expect(toLink(h, alphaOf(true))).toBe("#h;A,l");
+    expect(toLink(h)).toBe(
+      "#1,%CE%B1%E2%82%97%200%2C%20%CE%B1%E2%82%9B%20%2B15%2C%20T%E2%82%98%2CB%201200%20K,A,B,800,1200,10,10,0,15,300,1500",
+    );
+    expect(parseLink("#h;A")).toEqual({
+      ok: true,
+      value: { system: ofPreset("h"), alpha: { locked: false } },
+    });
+    const custom = ofPreset("h", {
+      name: "αₗ +10, αₛ +2.5, Tₘ,B 1005 K",
+      params: { ...preset("h").params, alphaL: 10, alphaS: 2.5, TmB: 1005 },
+    });
+    for (const locked of [true, false]) {
+      const link = toLink(custom, alphaOf(locked));
+      expect(link).toMatch(locked ? /^#1,.*,300,1500;A,l$/ : /^#1,.*,300,1500;A$/);
+      expect(parseLink(link)).toEqual({ ok: true, value: { system: custom, alpha: { locked } } });
+    }
+    // After a compound, which the α mode drops on entry.
+    expect(toLink(ofPreset("c1", { name: "Mine" }), alphaOf(false))).toBe("#c1;A");
+    const c1 = ofPreset("c1", { name: "Mine", components: { A: "Cu", B: "B" } });
+    expect(toLink(c1, alphaOf(true))).toMatch(/;C,\.5,-6,0,l;A,l$/);
+    // (A line's α_γ is not in a link, so only the compound's place is checked here.)
+    expect(parseLink(toLink(c1, alphaOf(true)))).toMatchObject({
+      ok: true,
+      value: { system: { name: "Mine" }, alpha: { locked: true } },
+    });
+    // A link without it opens in the Δg^M mode, as before.
+    expect(parseLink("#h;T,700")).toEqual({
+      ok: true,
+      value: { system: ofPreset("h"), view: { cut: 700 } },
+    });
+  });
+
   it("names the first problem of a malformed fragment", () => {
     const nums = "800,1200,10,10,0,15";
     const cases: [string, string][] = [
@@ -358,9 +398,63 @@ describe("share link", () => {
       ["#1,x,A,B," + nums + ";C,.5,abc,0,l", "dhf is not a finite number"],
       ["#c1;C,.5,-6,0,l", "the preset id c1 takes no compound"],
       ["#h;C,.5,-6,0,l;T,700;X,a", "X₀ is not a finite number"],
+      ["#h;T,700;A", "it has both a view and the α mode"],
+      ["#h;A;T,700", "it has both a view and the α mode"],
+      ["#h;T,700;X,.3;A", "it has more than two ;"],
+      ["#h;A,f", "its α mode is not A or A,l"],
+      ["#h;A,l,1", "its α mode is not A or A,l"],
+      ["#h;A,", "its α mode is not A or A,l"],
     ];
     for (const [fragment, problem] of cases) {
       expect(parseLink(fragment), fragment).toEqual({ ok: false, problem });
     }
+  });
+});
+
+describe("the α mode's link with a compound (plan §9 phase 19)", () => {
+  /** What Share writes in the α mode, and the α mode's position once the link has opened. */
+  const roundTrip = (store: Store, locked: boolean) => {
+    const link = toLink(appliedSystem(store.state), { alpha: { locked } });
+    const parsed = parseLink(link);
+    if (!parsed.ok) throw new Error(parsed.problem);
+    expect(parsed.value.alpha).toEqual({ locked });
+    const opened = new Store(parsed.value.system, parsed.value.system.components);
+    opened.setMode("alpha");
+    return { link, point: alphaPointOf(opened.state.params) };
+  };
+  const entered = (system: SystemSpec | (typeof PRESETS)[number]) => {
+    const store = new Store(system);
+    store.setMode("alpha");
+    return store;
+  };
+
+  it("gives c1 and c8 their ids, and opens them with the compound kept", () => {
+    for (const [id, locked] of [
+      ["c1", false],
+      ["c8", true],
+    ] as const) {
+      const store = entered(compoundPreset(id));
+      const { link, point } = roundTrip(store, locked);
+      expect(link).toBe(locked ? `#${id};A,l` : `#${id};A`);
+      expect(point).toEqual(alphaPointOf(store.state.params));
+      expect(point.compound).not.toBeNull();
+    }
+  });
+
+  it("round-trips a custom compound at X_c = 1/3 exactly, named A₂B", () => {
+    const store = entered(preset("h"));
+    store.setSystem(
+      alphaSystem({
+        alphaS: 10,
+        alphaL: -5,
+        TmB: 1305,
+        compound: { Xc: 1 / 3, dhf: -7.5, dsf: 1 },
+      }),
+    );
+    expect(store.state.name).toBe("αₗ −5, αₛ +10, Tₘ,B 1305 K, A₂B");
+    const { link, point } = roundTrip(store, false);
+    expect(link).toMatch(/;C,[^;]*,l;A$/);
+    expect(point.compound).toEqual({ Xc: 1 / 3, dhf: -7.5, dsf: 1 });
+    expect(point).toEqual(alphaPointOf(store.state.params));
   });
 });

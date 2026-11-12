@@ -69,6 +69,12 @@ export function signed(x: number): string {
   return `${x > 0 ? "+" : "−"}${Math.abs(x)}`;
 }
 
+/** `x` with one decimal and its sign, as α is shown in the α mode's caption: "+15.0", "0.0". */
+export function signedTenth(x: number): string {
+  if (x === 0) return "0.0";
+  return `${x > 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}`;
+}
+
 /** Δh = T_m Δs in kJ/mol (Δs in J/(mol·K)), for display beside Δs; "—" when not a number. */
 export function formatEnthalpy(Tm: number, ds: number): string {
   const dh = (Tm * ds) / 1000;

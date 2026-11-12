@@ -115,10 +115,10 @@ test("the header compacts, and then moves the main row under the logo, as the sc
   // about 9rem. The widths are the page's, inside its 16 px padding on either side.
   const steps = [
     [1248, false, true],
-    [840, false, true],
-    [839, false, false],
-    [583, false, false],
-    [582, true, false],
+    [944, false, true],
+    [943, false, false],
+    [687, false, false],
+    [686, true, false],
     [343, true, false],
   ] as const;
   // A classic scrollbar narrows the page, not the window, and the header follows the page; 15 px

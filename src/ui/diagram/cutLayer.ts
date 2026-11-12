@@ -2,8 +2,10 @@
 // the line with its 44 px hit band, the draggable handle with its grip and its ping, and at each
 // touching point of a tangent in the slice panel a marker on the cut and a dotted guide line down
 // to the panel, lighter for a metastable one, with a stable one's X_B in bold under the X axis.
+// On an invariant the middle phase has no marker of the cut's: the invariant's own is there.
 
 import { select } from "d3";
+import { invariantAt } from "../../physics/cut";
 import type { TieEnd } from "../../physics/hull";
 import { touchingXs } from "../../physics/slice";
 import { attachCutDrag } from "../cutDrag";
@@ -13,6 +15,7 @@ import { HANDLE_GRIP } from "../icons";
 import { joinGuides, joinMarkers, type Layer } from "../marks";
 import type { State, Store } from "../state";
 import { spreadApart } from "../textLayout";
+import { invariantTouches } from "./eventMarkers";
 
 /** Least space between two bold X_B values, CSS px. */
 const VALUE_GAP = 6;
@@ -104,7 +107,7 @@ export function createCutLayer(
  */
 function drawTouches(
   layers: CutLayers,
-  { window, cut: T, atCut, metastableAtCut }: Readonly<State>,
+  { window, cut: T, atCut, metastableAtCut, diagram }: Readonly<State>,
   size: PlotSize,
 ): void {
   const touches = touchingXs(atCut);
@@ -112,10 +115,20 @@ function drawTouches(
   const px = (e: TieEnd) => xOf(e.X, size);
   const bottom = size.height + MARGIN.bottom;
   const metaTouches = metastableAtCut.flatMap((m) => m.at);
+  // On an invariant its middle phase has no plain marker, stable or metastable (the extensions
+  // start there): the invariant's own lies there.
+  const middle = [...invariantTouches(touches, invariantAt(diagram.scan.events, T))][1];
+  const offMiddle = (e: TieEnd) => !middle || Math.abs(e.X - middle.X) > 1e-6;
   joinGuides(layers.metastableGuides, metaTouches, "metastable", px, y, bottom);
-  joinMarkers(layers.metastableMarkers, metaTouches, "metastable", px, y);
+  joinMarkers(layers.metastableMarkers, metaTouches.filter(offMiddle), "metastable", px, y);
   joinGuides(layers.guides, touches, "stable", px, y, bottom);
-  joinMarkers(layers.markers, touches, "stable", px, y);
+  joinMarkers(
+    layers.markers,
+    touches.filter((e) => e !== middle),
+    "stable",
+    px,
+    y,
+  );
 
   // Two touching points that would show the same value within a pixel get one.
   const items: BoldValue[] = [];

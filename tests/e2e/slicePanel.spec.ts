@@ -41,7 +41,10 @@ test("at 900 K in (h): the liquid arc, one L + β tangent, its touching points a
   expect(fill).toMatch(/^url\(#checker-.+-L\+S\)$/);
   await expect(slice.locator(`pattern${fill!.slice(4, -1).replace("+", "\\+")}`)).toHaveCount(1);
   // L + γ alone is in diamonds.
-  await expect(slice.locator("pattern[patternTransform]")).toHaveAttribute("data-kind", "L+C");
+  await expect(slice.locator("pattern.checker[patternTransform]")).toHaveAttribute(
+    "data-kind",
+    "L+C",
+  );
   // The bold values under the diagram's X axis.
   await expect(diagram(page).locator(".bold-value text")).toHaveText(["0.638", "0.948"]);
 });
@@ -218,8 +221,32 @@ test("at the eutectic temperature three markers lie on one tangent", async ({ pa
   const slice = slicePanel(page);
   await expect(slice.locator(".tangent.stable")).toHaveCount(1);
   await expect(slice.locator(".tangent.stable")).toHaveAttribute("data-points", "3");
-  const ys = await centresY(slice.locator(".touch-marker.stable"));
-  expect(ys).toHaveLength(3);
+  // In the slice panel each of the three carries the eutectic's ▼ in place of the plain circle.
+  await expect(slice.locator(".touch-marker.stable")).toHaveCount(0);
+  const symbols = slice.locator('.touch-symbol[data-kind="eutectic"]');
+  await expect(symbols).toHaveCount(3);
+  const ys = await centresY(symbols.locator(".halo"));
+  // Under the tangent, its two tie lines in the eutectic's orange hatch, not a checkerboard.
+  const hatched = slice.locator('.shade[data-invariant="eu"]');
+  await expect(hatched).toHaveCount(2);
+  for (const fill of await hatched.evaluateAll((els) => els.map((el) => el.getAttribute("fill"))))
+    expect(fill).toMatch(/^url\(#hatch-\w+-eu\)$/);
   for (const y of ys) expect(Math.abs(y - ys[0]!)).toBeLessThan(0.5);
+  // On the diagram the ends keep their circles, and the eutectic's own ▼ marks the middle, with
+  // no metastable circle over it.
+  await expect(diagram(page).locator(".touch-symbol")).toHaveCount(0);
+  const ends = await centresX(diagram(page).locator(".touch-marker.stable"));
+  const middle = await centresX(diagram(page).locator('.event-point[data-kind="eutectic"] .halo'));
+  for (const x of await centresX(diagram(page).locator(".touch-marker.metastable")))
+    expect(Math.abs(x - middle[0]!)).toBeGreaterThan(1);
+  const bottom = await centresX(symbols.locator(".halo"));
+  [ends[0]!, middle[0]!, ends[1]!].forEach((x, k) =>
+    expect(Math.abs(x - bottom[k]!)).toBeLessThan(0.5),
+  );
   await expect(diagram(page).locator(".bold-value text")).toHaveText(["0.087", "0.319", "0.913"]);
+  // A hair off the invariant the plain circles come back.
+  await setCut(page, 640);
+  await expect(slice.locator(".touch-symbol")).toHaveCount(0);
+  await expect(slice.locator(".shade[data-invariant]")).toHaveCount(0);
+  await expect(slice.locator(".touch-marker.stable")).not.toHaveCount(0);
 });

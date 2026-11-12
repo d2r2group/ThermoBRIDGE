@@ -52,8 +52,15 @@ test("draws (h): its boundaries, the eutectic line and the axes with the compone
   const T = 1500 - ((line.y + line.height / 2 - frame.y) / frame.height) * 1200;
   // Within one pixel row (1200 K over the plot height).
   expect(Math.abs(T - 634.2)).toBeLessThan(1200 / frame.height);
-  // (h) has no stable critical or congruent point.
-  await expect(diagram.locator(".event-point")).toHaveCount(0);
+  // (h)'s one marker is the eutectic's, a filled ▼ on its liquid; it has no critical or
+  // congruent point.
+  const marker = diagram.locator(".event-point");
+  await expect(marker).toHaveCount(1);
+  await expect(marker).toHaveAttribute("data-kind", "eutectic");
+  await expect(marker.locator("title")).toHaveText("eutectic, 634 K");
+  const box = (await marker.locator(".mark").boundingBox())!;
+  // On the liquid at X_B = 0.319.
+  expect((box.x + box.width / 2 - frame.x) / frame.width).toBeCloseTo(0.319, 2);
 
   await expect(diagram.locator(".y-label")).toHaveText("T (K)");
   await expect(diagram.locator(".x-label")).toHaveText("XB");

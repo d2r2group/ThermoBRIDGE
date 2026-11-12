@@ -1,6 +1,7 @@
 // The diagram's fields (plan §4 item 1, §4.1): the bitmap of the field fills under the SVG, and the
 // field labels over it. Both come from the hull of each row of device pixels, computed once per
-// system and size and shared by the two. A line compound's name goes beside its line instead, on a
+// diagram and size and shared by the two; a preview (plan §9 phase 15) has half the rows and no
+// labels. A line compound's name goes beside its line instead, on a
 // patch of the background over the lines (§9 phase 13).
 
 import type { Selection } from "d3";
@@ -8,6 +9,7 @@ import { setSvgName } from "../compoundText";
 import {
   compoundLines,
   labelCandidates,
+  type Box,
   placeCompoundLabel,
   placeLabels,
   type FieldLabel,
@@ -15,8 +17,8 @@ import {
 } from "../fieldLabels";
 import { MARGIN, measureText, xOf, yOf, type PlotSize } from "../geometry";
 import type { Layer } from "../marks";
-import { MAX_DPR, paintRegions, RasterCache, RowHullCache } from "../regions";
-import type { State } from "../state";
+import { MAX_DPR, paintRegions, RasterCache, rowHullsOf } from "../regions";
+import { isPreview, type State } from "../state";
 
 /** Half the height of a field label's 14 px text, CSS px. */
 const LABEL_HALF_HEIGHT = 7;
@@ -27,15 +29,21 @@ const LABEL_PX_PER_CHAR = 8;
 export type Outline = [number, number][];
 
 export interface FieldsLayer {
-  /** Paints the bitmap of `state`'s fields under the plot area. */
+  /**
+   * Paints the bitmap of `state`'s fields under the plot area, from half as many rows for a
+   * preview (plan §9 phase 15), a quarter for one with a compound (phase 19).
+   */
   paint(state: Readonly<State>, size: PlotSize): void;
   /**
    * Places the field labels, each at its field's pole of inaccessibility, in the curve colour for
    * a one-phase field and in --fg for a two-phase one, and a line compound's name beside its
    * line, and returns their outlines, which the invariant temperatures avoid. They depend on the
-   * system and the plot size only, so a cut drag leaves them.
+   * system, the plot size and `keepOut` (the α mode's caption, which they keep clear of) only, so
+   * a cut drag leaves them.
    */
-  drawLabels(state: Readonly<State>, size: PlotSize): Outline[];
+  drawLabels(state: Readonly<State>, size: PlotSize, keepOut?: Box | null): Outline[];
+  /** Removes the field labels and a line compound's name, which a preview does not place. */
+  clearLabels(): void;
 }
 
 /** A line compound's name on the diagram, at its centre in plot-area px. */
@@ -66,17 +74,22 @@ export function createFieldsLayer(
   labels: Layer,
   compoundLabels: Layer,
 ): FieldsLayer {
-  const rowHulls = new RowHullCache();
   const rasters = new RasterCache();
   /** The label candidates of the last system and size: a font swap only measures the names. */
   let candidates: { key: readonly unknown[]; value: LabelCandidate[] } | null = null;
 
-  /** The bitmap's grid in device pixels, and the hull of each of its rows. */
-  const grid = ({ params, window }: Readonly<State>, size: PlotSize) => {
+  /**
+   * The bitmap's grid in device pixels, `dprY` rows per CSS px (half `dpr` for a preview, a
+   * quarter for a preview with a compound, whose scan costs more: plan §9 phase 19), and the hull
+   * of each of its rows.
+   */
+  const grid = ({ diagram }: Readonly<State>, size: PlotSize) => {
     const dpr = Math.min(MAX_DPR, globalThis.devicePixelRatio || 1);
+    const preview = diagram.scan.params.compound ? dpr / 4 : dpr / 2;
+    const dprY = isPreview(diagram) ? preview : dpr;
     const cols = Math.max(1, Math.round(size.width * dpr));
-    const rows = Math.max(1, Math.round(size.height * dpr));
-    return { dpr, cols, rows, hulls: rowHulls.get(params, window, rows) };
+    const rows = Math.max(1, Math.round(size.height * dprY));
+    return { dpr, dprY, cols, rows, hulls: rowHullsOf(diagram, rows) };
   };
 
   return {
@@ -86,13 +99,18 @@ export function createFieldsLayer(
         .style("top", `${MARGIN.top}px`)
         .style("width", `${size.width}px`)
         .style("height", `${size.height}px`);
-      const { dpr, cols, rows, hulls } = grid(state, size);
+      const { dpr, dprY, cols, rows, hulls } = grid(state, size);
       const kinds = rasters.get(hulls, cols);
       const el = canvas.node() as HTMLCanvasElement;
-      paintRegions(el, kinds, cols, rows, dpr, getComputedStyle(container));
+      paintRegions(el, kinds, cols, rows, dpr, getComputedStyle(container), dprY);
     },
 
-    drawLabels(state, size) {
+    clearLabels() {
+      labels.selectAll("*").remove();
+      compoundLabels.selectAll("*").remove();
+    },
+
+    drawLabels(state, size, keepOut = null) {
       const { window, diagram } = state;
       const probe = labels.append("text").attr("class", "field-label");
       const node = probe.node() as SVGTextElement;
@@ -107,9 +125,12 @@ export function createFieldsLayer(
         return w / 2;
       };
       const { hulls } = grid(state, size);
-      const key = [diagram, size, hulls];
+      const key = [diagram, size, hulls, keepOut?.width, keepOut?.height];
       if (!candidates || candidates.key.some((k, i) => k !== key[i])) {
-        candidates = { key, value: labelCandidates(window, diagram.naming, size, hulls) };
+        candidates = {
+          key,
+          value: labelCandidates(window, diagram.naming, size, hulls, keepOut),
+        };
       }
       const placed = placeLabels(candidates.value, halfWidth);
       const name = diagram.naming.compound?.name;

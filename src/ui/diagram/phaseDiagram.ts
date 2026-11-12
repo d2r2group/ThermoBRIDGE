@@ -2,8 +2,8 @@
 // its layers from the bottom up, the axes with the component names under the ends of the X axis,
 // the plot size, and the subscription that redraws what a change touches. The layers draw
 // themselves: the field fills and labels (fieldsLayer.ts), the lines (linesLayer.ts), the
-// invariant temperatures (invariantTemps.ts), the cut (cutLayer.ts) and the lever rule
-// (leverLayer.ts).
+// invariant temperatures (invariantTemps.ts), the cut (cutLayer.ts), the lever rule
+// (leverLayer.ts) and the α mode's caption (alphaCaption.ts).
 
 import { axisBottom, axisLeft, scaleLinear, select } from "d3";
 import { AXIS_LABELS, setAxisLabel } from "../axisLabels";
@@ -16,13 +16,14 @@ import {
   X_LABEL_INSET,
   xOf,
   xTicks,
-  Y_LABEL_X,
   type PlotSize,
 } from "../geometry";
-import { attachPanel, fitSvg } from "../panel";
+import { attachPanel, fitSvg, placeYLabel } from "../panel";
 import { RESIZE_MS, throttle } from "../schedule";
-import type { State, Store } from "../state";
+import { labelsWait, type State, type Store } from "../state";
 import { onThemeChange } from "../theme";
+import { createAlphaCaption } from "./alphaCaption";
+import type { Box } from "../fieldLabels";
 import { createCutLayer } from "./cutLayer";
 import { createFieldsLayer } from "./fieldsLayer";
 import { drawInvariantTemps } from "./invariantTemps";
@@ -71,6 +72,8 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
   const cutGroup = plot.append("g").attr("class", "cut");
   // The lever rule (plan §4 item 7), over the cut; its knob is in a layer of its own at the top.
   const leverGroup = plot.append("g").attr("class", "lever");
+  // The α mode's values, where the lever's summary line would be.
+  const captionLayer = layer("alpha-caption");
   const metastableMarkers = layer("markers");
   const markers = layer("markers");
   // The cut's handle over the markers, which it would otherwise lie under at X = 1. Not
@@ -96,6 +99,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     store,
     getSize,
   );
+  const drawCaption = createAlphaCaption(captionLayer);
   const drawLeverKnob = createLeverLayer(leverGroup, leverKnobGroup, svgNode, store, getSize);
   /**
    * Draws the lever rule, and hides the cut's handle while the lever's knob overlaps it at the
@@ -107,18 +111,15 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     handleGroup.classed("covered", covered);
   };
 
-  const drawAxes = ({ window, components }: Readonly<State>) => {
+  const drawAxes = ({ window, components, mode }: Readonly<State>) => {
     const x = scaleLinear().domain([0, 1]).range([0, size.width]);
     const y = scaleLinear().domain([window.Tmin, window.Tmax]).range([size.height, 0]);
     xAxis.attr("transform", `translate(${MARGIN.left},${MARGIN.top + size.height})`);
     // Tick marks only: the slice panel's top axis right under this one carries the numbers, so
-    // the row under the diagram is left to the bold values (plan §4 item 1).
-    xAxis.call(
-      axisBottom(x)
-        .tickValues(xTicks(size.width))
-        .tickFormat(() => "")
-        .tickSizeOuter(0),
-    );
+    // the row under the diagram is left to the bold values (plan §4 item 1). The α mode has
+    // neither, so the numbers go here (§9 phase 16).
+    const ticks = axisBottom(x).tickValues(xTicks(size.width)).tickSizeOuter(0);
+    xAxis.call(mode === "alpha" ? ticks : ticks.tickFormat(() => ""));
     yAxis.attr("transform", `translate(${MARGIN.left},${MARGIN.top})`).call(
       axisLeft(y)
         .ticks(Math.floor(size.height / TICK_SPACING))
@@ -134,20 +135,40 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
       .attr("x", MARGIN.left + size.width)
       .attr("y", labelY)
       .text(components.B);
-    yLabel.attr("transform", `translate(${Y_LABEL_X},${MARGIN.top + size.height / 2}) rotate(-90)`);
     setAxisLabel(yLabel.node() as SVGTextElement, AXIS_LABELS.T);
+    placeYLabel(yLabel.node()!, yAxis.node()!, size.height, MARGIN);
     values.attr("transform", `translate(${MARGIN.left},${MARGIN.top + size.height})`);
+  };
+
+  /** The α mode's caption's box, which the field labels keep clear of (plan §9 phase 19). */
+  let captionBox: Box | null = null;
+
+  /**
+   * The field labels, which keep clear of the α mode's caption (`captionBox`), and the invariant
+   * temperatures, which keep clear of the labels; a preview (plan §9 phase 15), or any diagram
+   * while the α knob moves, hides both rather than leave them stale or flash them.
+   */
+  const drawLabelled = (state: Readonly<State>) => {
+    if (labelsWait(state)) {
+      fields.clearLabels();
+      invariantTLayer.selectAll("*").remove();
+      return;
+    }
+    drawInvariantTemps(invariantTLayer, state, size, fields.drawLabels(state, size, captionBox));
   };
 
   const drawAll = () => {
     const state = store.state;
+    svg.attr(
+      "aria-label",
+      state.mode === "alpha" ? "T-X phase diagram" : "T-X phase diagram with a horizontal cut",
+    );
     fitSvg(svgNode, size, MARGIN);
     frame.attr("d", frameTopRight(size));
     fields.paint(state, size);
-    // The invariant temperatures keep clear of the field labels, so these go first.
-    const outlines = fields.drawLabels(state, size);
     drawLines({ ...lineLayers, points }, state, size);
-    drawInvariantTemps(invariantTLayer, state, size, outlines);
+    captionBox = drawCaption(state, size);
+    drawLabelled(state);
     drawAxes(state);
     drawCut(state, size);
     drawLever(state, size);
@@ -155,7 +176,13 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
 
   store.subscribe((state, prev) => {
     if (size.width === 0) return;
-    if (state.diagram !== prev.diagram || state.components !== prev.components) drawAll();
+    if (
+      state.diagram !== prev.diagram ||
+      state.components !== prev.components ||
+      state.mode !== prev.mode
+    )
+      drawAll();
+    else if (state.alphaMoving !== prev.alphaMoving) drawLabelled(state);
     else if (
       state.cut !== prev.cut ||
       state.atCut !== prev.atCut ||
@@ -181,13 +208,15 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     if (size.width > 0) fields.paint(store.state, size);
   });
 
-  // The bold values, the field labels and the invariant temperatures are sized from their
-  // measured text, so once Lato has loaded (it swaps in for a fallback font) they are measured
-  // and placed again.
+  // The bold values, the field labels, the invariant temperatures and both plots' Y-axis labels
+  // are placed from their measured text, so once Lato has loaded (it swaps in for a fallback font)
+  // they are measured and placed again.
   void document.fonts?.ready.then(() => {
     if (size.width === 0) return;
     const state = store.state;
-    drawInvariantTemps(invariantTLayer, state, size, fields.drawLabels(state, size));
+    drawAxes(state);
+    captionBox = drawCaption(state, size);
+    drawLabelled(state);
     drawCut(state, size);
     drawLever(state, size);
   });

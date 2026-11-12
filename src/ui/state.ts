@@ -1,14 +1,21 @@
-// App state (plan §1, §9 phases 3–9): the system (its name, parameters, window, component names
-// and whether its window was fitted automatically), the cut temperature T*, whether the metastable
-// lines are shown, and whether the lever rule is shown with its X₀, with the diagram that the
-// physics core computes from the system once per change and the fields and metastable tie lines
-// along the cut. Adapted from pTerrain's ui/state.ts.
+// App state (plan §1, §9 phases 3–9 and 16–18): the mode, the system (its name, parameters, window,
+// component names and whether its window was fitted automatically), the cut temperature T*,
+// whether the metastable lines are shown, whether the lever rule is shown with its X₀, and the α
+// mode's *Stay on the axes* box, with the diagram that the physics core computes from the system
+// once per change and the fields and metastable tie lines along the cut. Adapted from pTerrain's ui/state.ts.
 
 import { boundaries, type Boundary } from "../physics/boundaries";
 import { fieldsAt } from "../physics/cut";
-import { invariantsOf, scan, scanIsFor, type DiagramEvent, type Scan } from "../physics/events";
+import {
+  invariantsOf,
+  scan,
+  scanIsFor,
+  STEP,
+  type DiagramEvent,
+  type Scan,
+} from "../physics/events";
 import { fields, type Naming } from "../physics/fields";
-import type { Params } from "../physics/gibbs";
+import { sameParams, type Params } from "../physics/gibbs";
 import type { PlotWindow } from "../physics/plotWindow";
 import {
   metastable,
@@ -19,6 +26,7 @@ import {
 import type { Field } from "../physics/hull";
 import { preset, PRESETS, type PresetId, type System } from "../physics/presets";
 import { spinodal, type SpinodalRun } from "../physics/spinodal";
+import { alphaName, alphaPointOf, alphaSystem } from "./alphaPoint";
 
 /** The names of the two components, under the ends of the X axis ("A" and "B" by default). */
 export interface Components {
@@ -41,7 +49,14 @@ export interface Diagram {
   spinodals: SpinodalRun[];
 }
 
+/**
+ * The page's two modes (plan §9 phase 16): the Δg^M mode moves a cut through one system, the α
+ * mode moves through the systems on an α_s–α_l pad.
+ */
+export type Mode = "dg" | "alpha";
+
 export interface State {
+  mode: Mode;
   /**
    * The system's name (plan §8 row 17): the preset's label after a menu choice, otherwise what was
    * last applied (*Custom* by default). It changes nothing in the physics.
@@ -69,6 +84,14 @@ export interface State {
   showLever: boolean;
   /** The lever rule's overall composition X₀ in [0, 1]; kept when the cut or the system changes. */
   X0: number;
+  /** The α mode's *Stay on the axes* box (plan §9 phase 17), unticked each time the mode opens. */
+  alphaLock: boolean;
+  /**
+   * Whether the α mode's knob or slider is moving (plan §9 phase 15): set by each move and cleared
+   * once it rests or is released, so that a full diagram from the cache drawn mid-drag hides its
+   * field labels and invariant temperatures as a preview does, rather than flash them.
+   */
+  alphaMoving: boolean;
 }
 
 export type Listener = (state: Readonly<State>, prev: Readonly<State>) => void;
@@ -76,15 +99,18 @@ export type Listener = (state: Readonly<State>, prev: Readonly<State>) => void;
 /**
  * The diagram of a system; throws for a system that does not pass `validate` (plan §2.2). The
  * scan `given` (from `checkSystem`) is used when it is this system's, so that Apply scans once.
- * The component names name a line compound.
+ * The component names name a line compound. A `step` coarser than STEP gives the α mode's
+ * preview (plan §9 phase 15).
  */
 export function computeDiagram(
   params: Params,
   window: PlotWindow,
   given?: Scan,
   components: Components = DEFAULT_COMPONENTS,
+  step = STEP,
 ): Diagram {
-  const scanned = given && scanIsFor(given, params, window) ? given : scan(params, window);
+  const scanned =
+    given && scanIsFor(given, params, window, step) ? given : scan(params, window, step);
   return {
     scan: scanned,
     boundaries: boundaries(params, window, scanned),
@@ -93,6 +119,15 @@ export function computeDiagram(
     spinodals: spinodal(params, window, scanned),
   };
 }
+
+/** Whether `diagram` is a preview, scanned coarser than STEP (plan §9 phase 15). */
+export const isPreview = (diagram: Diagram) => diagram.scan.step !== STEP;
+
+/**
+ * Whether the field labels and invariant temperatures wait: for a preview, and for any diagram
+ * while the α mode's knob is moving, so that they do not flash on cached full diagrams.
+ */
+export const labelsWait = (state: Readonly<State>) => isPreview(state.diagram) || state.alphaMoving;
 
 /** What the store derives from the system and the cut. */
 function alongCut(params: Params, diagram: Diagram, cut: number) {
@@ -130,15 +165,21 @@ function labelOf(system: System): string {
   );
 }
 
-/** A minimal observable store. Every change replaces the state object, so listeners can diff. */
+/**
+ * A minimal observable store. Every change replaces the state object, so listeners can diff. In
+ * the α mode it keeps the Δg^M mode's state, to come back to.
+ */
 export class Store {
   #state: State;
   #listeners = new Set<Listener>();
+  /** While the α mode is on: the Δg^M mode's state, and the parameters the α mode started at. */
+  #kept: { state: State; entry: Params } | null = null;
 
   constructor(system: System, components: Components = DEFAULT_COMPONENTS, name = labelOf(system)) {
     const diagram = computeDiagram(system.params, system.window, undefined, components);
     const cut = defaultCut(system.window);
     this.#state = {
+      mode: "dg",
       name,
       params: system.params,
       window: system.window,
@@ -150,6 +191,8 @@ export class Store {
       showMetastable: true,
       showLever: false,
       X0: DEFAULT_X0,
+      alphaLock: false,
+      alphaMoving: false,
     };
   }
 
@@ -177,26 +220,32 @@ export class Store {
    * the same system, so that listeners can tell an applied system from other changes. With
    * `resetCut` the cut goes to the middle of the new window (a preset); otherwise it keeps its
    * value, clamped into the window. `scan`, the system's scan from `checkSystem`, saves scanning
-   * it again.
+   * it again; `diagram`, the system's diagram from the α mode's cache, saves computing it. In the
+   * α mode the name follows the system's values (`alphaName`) unless one is given; `alphaMoving`
+   * sets the flag of that name, which is otherwise kept.
    */
   setSystem(
     system: System,
     {
-      name = this.#state.name,
+      name = this.#state.mode === "alpha" ? alphaName(system.params) : this.#state.name,
       components = this.#state.components,
       auto = this.#state.auto,
       resetCut = false,
       scan,
+      diagram: given,
+      alphaMoving = this.#state.alphaMoving,
     }: {
       name?: string;
       components?: Components;
       auto?: boolean;
       resetCut?: boolean;
       scan?: Scan;
+      diagram?: Diagram;
+      alphaMoving?: boolean;
     } = {},
   ): void {
     const { params, window } = system;
-    const diagram = computeDiagram(params, window, scan, components);
+    const diagram = given ?? computeDiagram(params, window, scan, components);
     const cut = resetCut ? defaultCut(window) : clampCut(this.#state.cut, window);
     this.#update({
       name,
@@ -207,6 +256,7 @@ export class Store {
       diagram,
       cut,
       ...alongCut(params, diagram, cut),
+      alphaMoving,
     });
   }
 
@@ -224,19 +274,101 @@ export class Store {
     });
   }
 
-  /** Moves the cut to `nextInvariant`; does nothing in a system without an invariant. */
+  /**
+   * Moves the cut to `nextInvariant`; does nothing in a system without an invariant, or in the α
+   * mode, which has no cut.
+   */
   snapToInvariant(): void {
-    const { diagram, cut } = this.#state;
+    const { diagram, cut, mode } = this.#state;
     const target = nextInvariant(diagram.scan.events, cut);
-    if (target) this.setCut(target.T);
+    if (target && mode === "dg") this.setCut(target.T);
   }
 
   setShowMetastable(show: boolean): void {
     if (show !== this.#state.showMetastable) this.#update({ showMetastable: show });
   }
 
+  /** Shows or hides the lever rule; the α mode has none. */
   setShowLever(show: boolean): void {
-    if (show !== this.#state.showLever) this.#update({ showLever: show });
+    if (show !== this.#state.showLever && this.#state.mode === "dg") {
+      this.#update({ showLever: show });
+    }
+  }
+
+  /**
+   * Switches the mode (plan §9 phases 16 and 19). Entering the α mode keeps the Δg^M mode's state
+   * and starts from its α_s, α_l, T_m,B and line compound (`alphaPointOf`; a compound with a
+   * range is dropped), with the fixed components, the α mode's window, no lever rule and *Stay on
+   * the axes* unticked. Leaving it brings that state
+   * back if the α mode's system is still the one it started at; otherwise the Δg^M mode takes
+   * that system (a preset, with its name and window, where it has a preset's parameters; else
+   * named from its values, in the α mode's window), with *auto* unticked and the cut in the
+   * window's middle, and keeps X₀ and the lever rule. The Metastable toggle is the same in both
+   * modes.
+   */
+  setMode(mode: Mode): void {
+    if (mode === this.#state.mode) return;
+    if (mode === "alpha") this.#enterAlpha();
+    else this.#leaveAlpha();
+  }
+
+  #enterAlpha(): void {
+    const { params, window } = alphaSystem(alphaPointOf(this.#state.params));
+    this.#kept = { state: this.#state, entry: params };
+    const diagram = computeDiagram(params, window);
+    const cut = defaultCut(window);
+    this.#update({
+      mode: "alpha",
+      name: alphaName(params),
+      params,
+      window,
+      components: DEFAULT_COMPONENTS,
+      auto: false,
+      diagram,
+      cut,
+      ...alongCut(params, diagram, cut),
+      showLever: false,
+      alphaLock: false,
+      alphaMoving: false,
+    });
+  }
+
+  #leaveAlpha(): void {
+    const kept = this.#kept!;
+    this.#kept = null;
+    const { params, window, diagram: shown, showMetastable } = this.#state;
+    if (sameParams(params, kept.entry)) {
+      this.#update({ ...kept.state, showMetastable });
+      return;
+    }
+    // At a preset's parameters the Δg^M mode takes the preset, in its own window.
+    const match = PRESETS.find((p) => sameParams(params, p.params));
+    const target = match ? match.window : window;
+    // A drag can leave a preview on screen; the Δg^M mode draws the full diagram.
+    const diagram = match || isPreview(shown) ? computeDiagram(params, target) : shown;
+    const cut = defaultCut(target);
+    this.#update({
+      mode: "dg",
+      name: match ? match.label : alphaName(params),
+      window: target,
+      auto: false,
+      diagram,
+      cut,
+      ...alongCut(params, diagram, cut),
+      showLever: kept.state.showLever,
+      X0: kept.state.X0,
+      alphaMoving: false,
+    });
+  }
+
+  /** Ticks or unticks the α mode's *Stay on the axes* box. */
+  setAlphaLock(locked: boolean): void {
+    if (locked !== this.#state.alphaLock) this.#update({ alphaLock: locked });
+  }
+
+  /** Sets whether the α mode's knob or slider is moving (`State.alphaMoving`). */
+  setAlphaMoving(moving: boolean): void {
+    if (moving !== this.#state.alphaMoving) this.#update({ alphaMoving: moving });
   }
 
   /** Moves the lever rule's X₀ to X, clamped into [0, 1]; a value that is not a number is ignored. */

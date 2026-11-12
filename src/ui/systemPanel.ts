@@ -3,7 +3,8 @@
 // Window, the *Add compound* box and Width control, the *auto* box, Apply, the Name field, and the
 // warning that lists the failed validity checks. The
 // form is built in systemForm.ts; Import and Export (systemIO.ts) sit under Apply; Share is in
-// share.ts and opening a link in link.ts.
+// share.ts and opening a link in link.ts. In the α mode (§9 phase 16) the panel shows the α mode's
+// system, with every control but Export disabled.
 
 import type { ValidityIssue } from "../physics/validity";
 import { formatEnthalpy } from "./format";
@@ -296,9 +297,30 @@ export function createSystemPanel(container: HTMLElement, store: Store): SystemP
     warning.replaceChildren(line);
   };
 
-  fill(store.state);
+  /**
+   * In the α mode, disables every control of the form but Export, which writes the current
+   * system. `fill` sets the controls' own disabled states again afterwards.
+   */
+  const lock = (alpha: boolean) => {
+    for (const control of form.elements) {
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLButtonElement)) continue;
+      if (!control.classList.contains("export")) control.disabled = alpha;
+    }
+  };
+  const refill = (state: Readonly<State>) => {
+    lock(state.mode === "alpha");
+    fill(state);
+    if (state.mode === "alpha") lock(true);
+  };
+
+  refill(store.state);
   store.subscribe((state, prev) => {
-    if (state.diagram !== prev.diagram || state.components !== prev.components) fill(state);
+    if (
+      state.diagram !== prev.diagram ||
+      state.components !== prev.components ||
+      state.mode !== prev.mode
+    )
+      refill(state);
   });
 
   return {

@@ -2,13 +2,19 @@
 // in the side column with X₀'s slider and number field. The diagram's lever layer
 // (diagram/leverLayer.ts) draws the knob and the tie line, and the slice panel the mixture's point.
 
+import { greyInAlpha } from "./buttons";
 import { appendHtmlName } from "./compoundText";
 import { BALANCE, icon } from "./icons";
 import { leverOf, leverRows } from "./leverText";
 import type { Store } from "./state";
 
-/** The Lever toggle button of the main row (plan §4 item 5), with a balance and "Lever". */
+/**
+ * The Lever toggle button of the main row (plan §4 item 5), with a balance and "Lever", in a box
+ * that carries its tooltip while the α mode greys it out (§9 phase 16).
+ */
 export function createLeverToggle(container: HTMLElement, store: Store): void {
+  const box = document.createElement("div");
+  box.className = "lever-box";
   const button = document.createElement("button");
   button.type = "button";
   button.className = "lever-toggle btn";
@@ -19,11 +25,16 @@ export function createLeverToggle(container: HTMLElement, store: Store): void {
   button.append(label);
   // The label is hidden on a phone, where the icon alone fits, so the name is set on the button.
   button.setAttribute("aria-label", "Lever rule");
-  button.title = "Show or hide the lever rule at an overall composition on the cut";
   button.addEventListener("click", () => store.setShowLever(!store.state.showLever));
-  container.append(button);
+  box.append(button);
+  container.append(box);
 
-  const sync = () => button.setAttribute("aria-pressed", String(store.state.showLever));
+  const sync = () => {
+    const { showLever, mode } = store.state;
+    button.setAttribute("aria-pressed", String(showLever));
+    const title = "Show or hide the lever rule at an overall composition on the cut";
+    greyInAlpha(button, box, title, mode === "alpha");
+  };
   sync();
   store.subscribe(sync);
 }

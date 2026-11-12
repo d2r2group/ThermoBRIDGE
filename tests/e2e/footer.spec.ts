@@ -81,7 +81,9 @@ test("the button opens a named modal dialog and moves focus into it", async ({ p
   expect(await dialog(page).evaluate((el) => el.matches(":modal"))).toBe(true);
   expect(await dialog(page).evaluate((el) => el.contains(document.activeElement))).toBe(true);
   await expect(dialog(page).getByRole("heading", { name: "Presets" })).toBeVisible();
-  await expect(dialog(page).getByRole("table")).toBeVisible();
+  // The key to the diagram's markers and the preset table.
+  await expect(dialog(page).getByRole("table")).toHaveCount(2);
+  await expect(dialog(page).locator(".marker-legend")).toBeVisible();
 });
 
 test("Esc, the close button and a backdrop click each close it and return focus", async ({

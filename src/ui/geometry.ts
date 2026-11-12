@@ -8,9 +8,11 @@ import type { PlotWindow } from "../physics/plotWindow";
 
 /**
  * Fixed margins around the plot area, in CSS px. They are not fitted to the tick labels, so the
- * slice panel under the diagram can share the same left edge and width (plan §4 item 2).
+ * slice panel under the diagram can share the same left edge and width (plan §4 item 2). The
+ * right margin holds the cut handle's 11 px knob; the left one the T and g tick labels and the
+ * axis labels beside them (panel.ts, placeYLabel). As in pTerrain.
  */
-export const MARGIN = { top: 12, right: 20, bottom: 44, left: 60 } as const;
+export const MARGIN = { top: 12, right: 13, bottom: 44, left: 50 } as const;
 
 /**
  * The slice panel's margins. Its X axis runs along the top, so the tick labels sit above the plot
@@ -76,15 +78,17 @@ export const HIT_BAND = 44;
 export const CUT_KNOB_R = 11;
 /** The lever knob's radius, CSS px: smaller than the cut's knob, and filled. */
 export const LEVER_KNOB_R = 7;
-/** The touching points' and the diagram's event points' marker radius, CSS px. */
+/** How near a drag pulls the α knob onto a grid preset, CSS px. */
+export const PRESET_MAGNET_PX = 6;
+/** How near a drag pulls the cut onto a marked point's temperature, CSS px: subtler. */
+export const CUT_MAGNET_PX = 3;
+/** The touching points' marker radius, CSS px (the event markers' sizes are in eventMarkers.ts). */
 export const MARKER_R = 3.5;
 
 /** About one T or g tick per this many CSS px of plot height. */
 export const TICK_SPACING = 50;
 /** The baseline of the diagram's X-axis label and component names above the SVG's bottom, px. */
 export const X_LABEL_INSET = 6;
-/** The x of the rotated Y-axis labels' baseline from the SVG's left edge, CSS px. */
-export const Y_LABEL_X = 14;
 
 /**
  * The width of an SVG text element's text, CSS px. Before layout (or before its font has loaded)

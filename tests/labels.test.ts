@@ -172,6 +172,22 @@ describe("labelCandidates", () => {
     );
     for (const l of labels) expect(nameAt(sys, size, l.x, l.y)).toBe(l.name);
   });
+
+  it("keep clear of the α mode's caption box, each label still in its own field", () => {
+    const hulls = hullsOf(sys, size);
+    const free = labelCandidates(sys.window, namingOf(sys), size, hulls);
+    const liquid = free.find((c) => c.name === "L")!;
+    // A box over the liquid's label, from the plot area's top-left corner.
+    const keepOut = { width: liquid.x + 60, height: liquid.y + 20 };
+    const kept = labelCandidates(sys.window, namingOf(sys), size, hulls, keepOut);
+    const moved = kept.find((c) => c.name === "L")!;
+    expect(moved.x >= keepOut.width || moved.y >= keepOut.height).toBe(true);
+    expect(moved.cells).toBeLessThan(liquid.cells);
+    for (const c of kept) {
+      expect(c.x >= keepOut.width || c.y >= keepOut.height).toBe(true);
+      expect(nameAt(sys, size, c.x, c.y)).toBe(c.name);
+    }
+  });
 });
 
 describe("placeInvariantT", () => {

@@ -56,7 +56,7 @@ test("the System menu lists five groups of presets, then Custom, and starts on t
     .evaluateAll((els) => els.map((el) => (el as HTMLOptionElement).value));
   expect(ids).toEqual([
     ...["n", "m", "o", "m1", "h", "c", "p1", "p2", "p3", "e", "p4", "k"],
-    ...["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"],
+    ...["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"],
     "custom",
   ]);
   // The open list shows the α values and T_m,B; the closed menu the short label.

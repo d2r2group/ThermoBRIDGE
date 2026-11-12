@@ -1,7 +1,8 @@
 // The events of plan §3: the temperatures where the sequence of fields changes. The window is
-// stepped in about 1 K; where two steps' fields differ, the step is halved down to 1e-3 K, which
-// separates events that fall within one step (in (i) the peritectic is 1.1 K below T_m,A). The
-// kind of change then says which exact solve gives the event's position.
+// stepped in about 1 K (4 K for the α mode's preview); where two steps' fields differ, the step
+// is halved down to 1e-3 K, which separates events that fall within one step (in (i) the
+// peritectic is 1.1 K below T_m,A). The kind of change then says which exact solve gives the
+// event's position.
 
 import {
   criticalT,
@@ -80,12 +81,20 @@ export interface Step {
 export interface Scan {
   params: Params;
   window: PlotWindow;
+  /** The step the window was scanned in, K: STEP, or COARSE_STEP for a drag's preview. */
+  step: number;
   steps: Step[];
   events: DiagramEvent[];
 }
 
 /** The window's step, K. */
-const STEP = 1;
+export const STEP = 1;
+/**
+ * The step of the α mode's preview while the knob is dragged (plan §9 phase 15), K: about twice as
+ * fast, since the events are still bisected to BRACKET, and it finds the same events unless two
+ * of them cancel within one step.
+ */
+export const COARSE_STEP = 4;
 /** Steps are halved down to this before a change is classified, K. */
 const BRACKET = 1e-3;
 /**
@@ -113,16 +122,18 @@ type Pair = [PhaseId, PhaseId];
 const pairsOf = (h: Hull): Pair[] => h.ties.map((t) => [t.ends[0].phase, t.ends[1].phase]);
 const samePair = (a: Pair, b: Pair) => a[0] === b[0] && a[1] === b[1];
 
-/** How many steps the scan of `window` takes. */
-const stepCount = ({ Tmin, Tmax }: PlotWindow) => Math.max(1, Math.ceil((Tmax - Tmin) / STEP));
+/** How many steps the scan of `window` takes in `step` K. */
+const stepCount = ({ Tmin, Tmax }: PlotWindow, step = STEP) =>
+  Math.max(1, Math.ceil((Tmax - Tmin) / step));
 
 /** The temperature of step j of the n steps of the scan of `window`. */
 const stepT = ({ Tmin, Tmax }: PlotWindow, j: number, n: number) =>
   j === n ? Tmax : Tmin + ((Tmax - Tmin) * j) / n;
 
-/** Whether `scanned` is the scan of these parameters and this window, by value. */
-export function scanIsFor(scanned: Scan, params: Params, window: PlotWindow): boolean {
+/** Whether `scanned` is the scan of these parameters and this window in `step` K, by value. */
+export function scanIsFor(scanned: Scan, params: Params, window: PlotWindow, step = STEP): boolean {
   return (
+    scanned.step === step &&
     sameParams(scanned.params, params) &&
     scanned.window.Tmin === window.Tmin &&
     scanned.window.Tmax === window.Tmax
@@ -140,7 +151,7 @@ export function scanIsFor(scanned: Scan, params: Params, window: PlotWindow): bo
 export function subScan(scanned: Scan, window: PlotWindow): Scan | null {
   const { steps } = scanned;
   const lo = steps.findIndex((s) => s.T === window.Tmin);
-  const n = stepCount(window);
+  const n = stepCount(window, scanned.step);
   if (lo < 0 || lo + n >= steps.length) return null;
   for (let j = 0; j <= n; j++) if (steps[lo + j]!.T !== stepT(window, j, n)) return null;
   const inner = steps.slice(lo, lo + n + 1);
@@ -151,12 +162,12 @@ export function subScan(scanned: Scan, window: PlotWindow): Scan | null {
     sig = e.sigAbove;
   }
   if (sig !== inner.at(-1)!.sig) return null;
-  return { params: scanned.params, window, steps: inner, events };
+  return { params: scanned.params, window, step: scanned.step, steps: inner, events };
 }
 
-/** The stepped hulls and the events of the system over the window. */
-export function scan(params: Params, window: PlotWindow): Scan {
-  const n = stepCount(window);
+/** The stepped hulls and the events of the system over the window, stepped in about `step` K. */
+export function scan(params: Params, window: PlotWindow, step = STEP): Scan {
+  const n = stepCount(window, step);
   const at = (T: number): Step => {
     let hull: Hull;
     try {
@@ -189,7 +200,7 @@ export function scan(params: Params, window: PlotWindow): Scan {
     if (e.sigBelow !== sig) throw new EventError(`events out of order at ${e.T.toFixed(3)} K`);
     sig = e.sigAbove;
   }
-  return { params, window, steps, events: found };
+  return { params, window, step, steps, events: found };
 }
 
 /** The events of the system over the window, T increasing. */

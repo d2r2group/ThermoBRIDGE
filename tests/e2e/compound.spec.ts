@@ -15,7 +15,8 @@ import {
 // The intermediate compound on screen (plan §9 phase 13): the Compound fieldset, the compound
 // presets, a link with a compound, and its drawing in both plots.
 
-const compoundBox = (page: Page) => page.getByRole("checkbox", { name: "Add compound" });
+const compoundBox = (page: Page) =>
+  page.getByRole("checkbox", { name: "Add compound", exact: true });
 const width = (page: Page, label: "Line" | "Range") =>
   page.getByRole("radio", { name: `Compound width: ${label}` });
 const compoundLabel = (page: Page) => diagram(page).locator(".compound-label text");

@@ -6,7 +6,8 @@
 import { tickStep } from "d3";
 import type { PlotWindow } from "../physics/plotWindow";
 import { attachAxisDrag } from "./axisDrag";
-import { TAt, type PlotSize } from "./geometry";
+import { CUT_MAGNET_PX, TAt, yOf, type PlotSize } from "./geometry";
+import { markedPointsOf } from "./diagram/eventMarkers";
 import type { Store } from "./state";
 
 /**
@@ -30,8 +31,30 @@ export function cutAfterKey(key: string, T: number, window: PlotWindow): number 
 }
 
 /**
+ * `T` pulled onto the nearest of `targets` (K) within `radius` px of it on a plot of `size` in
+ * `window`, else `T` itself: the marked points' slight magnet for a drag of the cut.
+ */
+export function snapCut(
+  T: number,
+  targets: readonly number[],
+  window: PlotWindow,
+  size: PlotSize,
+  radius: number,
+): number {
+  const y = yOf(T, window, size);
+  let best = T;
+  let bestD = radius;
+  for (const t of targets) {
+    const d = Math.abs(yOf(t, window, size) - y);
+    if (d <= bestD) [best, bestD] = [t, d];
+  }
+  return best;
+}
+
+/**
  * Lets the cut be dragged by `targets` inside `svg` and stepped from the keyboard on `handle`
- * (`attachAxisDrag`), with the offset in K. `svg` has the class `cut-dragging` during a drag.
+ * (`attachAxisDrag`), with the offset in K. A drag is pulled slightly onto the T of an event
+ * marker (`markedPointsOf`, `snapCut`). `svg` has the class `cut-dragging` during a drag.
  */
 export function attachCutDrag(
   svg: SVGSVGElement,
@@ -49,6 +72,14 @@ export function attachCutDrag(
     value: () => store.state.cut,
     keyStep: (key, T) => cutAfterKey(key, T, store.state.window),
     onChange: (T) => store.setCut(T),
+    snap: (T) =>
+      snapCut(
+        T,
+        markedPointsOf(store.state.diagram.scan.events).map((e) => e.T),
+        store.state.window,
+        size(),
+        CUT_MAGNET_PX,
+      ),
     draggingClass: "cut-dragging",
   });
 }

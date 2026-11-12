@@ -1,15 +1,23 @@
 // The diagram's lines (plan §4 item 1): the stable boundaries (a line compound's vertical line
 // among them), the dashed metastable extensions of the boundaries with liquid at one end, the
-// dotted spinodals, the invariant lines, and the stable critical and congruent points as markers:
-// congruent melting and a congruent transformation of a compound (§9 phase 13) too.
+// dotted spinodals, the invariant lines, and a marker on each invariant and on each stable
+// critical and congruent point (eventMarkers.ts): congruent melting and a congruent
+// transformation of a compound (§9 phase 13) too.
 
 import { line } from "d3";
 import type { Boundary } from "../../physics/boundaries";
 import { invariantsOf, type DiagramEvent } from "../../physics/events";
 import type { SpinodalRun } from "../../physics/spinodal";
-import { MARKER_R, xOf, yOf, type PlotSize } from "../geometry";
+import { xOf, yOf, type PlotSize } from "../geometry";
 import type { Layer } from "../marks";
 import type { State } from "../state";
+import {
+  joinEventMarkers,
+  markedPointsOf,
+  markerPoint,
+  markerStyle,
+  markerTitle,
+} from "./eventMarkers";
 
 /** One end of a metastable extension's tie line, as a polyline in (X, T). */
 interface MetastableLine {
@@ -25,14 +33,6 @@ export interface LineLayers {
   boundaries: Layer;
   invariants: Layer;
   points: Layer;
-}
-
-/**
- * The stable critical points, congruent minima and maxima, and congruent transformations of a
- * compound, each drawn as a marker.
- */
-export function markedPointsOf(events: readonly DiagramEvent[]): DiagramEvent[] {
-  return events.filter((e) => ["critical", "minimum", "maximum", "congruent"].includes(e.kind));
 }
 
 export function drawLines(
@@ -85,13 +85,13 @@ export function drawLines(
     .attr("x2", (e) => xOf(e.points[2]!.X, size))
     .attr("y1", (e) => yOf(e.T, window, size))
     .attr("y2", (e) => yOf(e.T, window, size));
-  layers.points
-    .selectAll<SVGCircleElement, DiagramEvent>("circle")
-    .data(markedPointsOf(events))
-    .join("circle")
-    .attr("class", "event-point")
-    .attr("data-kind", (e) => e.kind)
-    .attr("r", MARKER_R)
-    .attr("cx", (e) => xOf(e.points[0]!.X, size))
-    .attr("cy", (e) => yOf(e.T, window, size));
+  joinEventMarkers(
+    layers.points,
+    "diagram-point",
+    markedPointsOf(events),
+    (e) => markerStyle(e)!,
+    (e) => xOf(markerPoint(e).X, size),
+    (e) => yOf(e.T, window, size),
+    (e) => ({ kind: e.kind, title: markerTitle(e) }),
+  );
 }

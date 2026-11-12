@@ -47,19 +47,31 @@ export interface LabelCandidate extends FieldLabel {
   scale: number;
 }
 
+/** A box from the plot area's top-left corner, CSS px. */
+export interface Box {
+  width: number;
+  height: number;
+}
+
+/** The field and name index of a cell under the keep-out box. */
+const KEPT_OUT = -1;
+
 /**
  * The connected fields of the diagram, each at its pole of inaccessibility inside the plot area,
  * on a raster of LABEL_CELL CSS px. Each raster row takes the hull of `hulls` (`rowHulls`, from
  * the top, of any count) whose row holds its centre. A field type can occur more than once (a
  * eutectic has two L + S fields), so each connected field is found on its own: two cells in one
  * row join when they are in the same field of that row's hull, two in one column when their
- * fields have the same name. A field too small to clear MIN_CLEARANCE is left out.
+ * fields have the same name. A field too small to clear MIN_CLEARANCE is left out. The cells
+ * under `keepOut`, a box from the plot area's top-left corner in CSS px (the α mode's caption),
+ * belong to no field, so no label is placed under it.
  */
 export function labelCandidates(
   window: PlotWindow,
   naming: Naming,
   size: PlotSize,
   hulls: readonly Hull[],
+  keepOut: Box | null = null,
 ): LabelCandidate[] {
   const cols = Math.max(1, Math.round(size.width / LABEL_CELL));
   const rows = Math.max(1, Math.round(size.height / LABEL_CELL));
@@ -73,7 +85,12 @@ export function labelCandidates(
     const hull = hulls[Math.min(hulls.length - 1, Math.floor(((r + 0.5) / rows) * hulls.length))]!;
     const named = naming.name(hull);
     columnFields(hull.fields, cols, rowFields);
+    const y = ((r + 0.5) / rows) * size.height;
     for (let c = 0; c < cols; c++) {
+      if (keepOut && y < keepOut.height && ((c + 0.5) / cols) * size.width < keepOut.width) {
+        fieldIndex[r * cols + c] = nameIndex[r * cols + c] = KEPT_OUT;
+        continue;
+      }
       const f = named[rowFields[c]!]!;
       let id = nameIds.get(f.name);
       if (id === undefined) {
@@ -117,7 +134,7 @@ export function labelCandidates(
   const out: LabelCandidate[] = [];
   const mask = new Uint8Array(n);
   for (const [root, cells] of members) {
-    if (cells < Math.PI * least * least) continue;
+    if (nameIndex[root] === KEPT_OUT || cells < Math.PI * least * least) continue;
     const { field: f, phase } = names[nameIndex[root]!]!;
     for (let k = 0; k < n; k++) mask[k] = component[k] === root ? 1 : 0;
     const pole = poleOfInaccessibility(mask, cols, rows, 1);

@@ -1,7 +1,7 @@
 // Copied from pTerrain's ui/overlay.ts.
 //
 // The overlays, Model Details and About: a modal <dialog> with a heading, a × button and a body
-// that scrolls on its own.
+// that scrolls on its own, focusable so that the keyboard can scroll it.
 
 /**
  * A dialog that `opener` opens, with the class `name` and the heading `title`, appended to
@@ -26,6 +26,9 @@ export function createOverlay(
     `<div class="dialog-body">${body}</div>`;
   const close = dialog.querySelector<HTMLButtonElement>(".dialog-close")!;
   const bodyElement = dialog.querySelector<HTMLElement>(".dialog-body")!;
+  // Focusable, so that the keyboard can scroll it where it holds nothing else to focus (About's
+  // copies are inert). The × button comes first, so it still takes focus on opening.
+  bodyElement.tabIndex = 0;
 
   opener.addEventListener("click", () => {
     onOpen?.(bodyElement);

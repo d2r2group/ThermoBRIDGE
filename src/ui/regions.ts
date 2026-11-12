@@ -8,6 +8,7 @@
 import { COMPOUND, LIQUID, type Params } from "../physics/gibbs";
 import type { PlotWindow } from "../physics/plotWindow";
 import { HullError, sliceHull, type Field, type Hull } from "../physics/hull";
+import type { Diagram } from "./state";
 
 /**
  * The kinds of field, by the phases they hold: L + L is a liquid gap and S + S a solid one; C is
@@ -127,22 +128,20 @@ export function checkerColour(x: number, y: number, diamond: boolean): 0 | 1 {
   return ((Math.floor(u / CHECKER_CELL) + Math.floor(v / CHECKER_CELL)) & 1) as 0 | 1;
 }
 
-/**
- * The row hulls (`rowHulls`) of the last system, window and row count asked for: the region raster
- * and the field labels both read them, so they are computed once per system and plot size.
- */
-export class RowHullCache {
-  #key: { params: Params; window: PlotWindow; rows: number } | null = null;
-  #hulls: Hull[] = [];
+/** The row hulls of each diagram, for the last row count asked for (`rowHullsOf`). */
+const ROW_HULLS = new WeakMap<Diagram, { rows: number; hulls: Hull[] }>();
 
-  get(params: Params, window: PlotWindow, rows: number): Hull[] {
-    const key = this.#key;
-    if (!key || key.params !== params || key.window !== window || key.rows !== rows) {
-      this.#key = { params, window, rows };
-      this.#hulls = rowHulls(params, window, rows);
-    }
-    return this.#hulls;
-  }
+/**
+ * The row hulls (`rowHulls`) of `diagram`'s system and window, kept with the diagram for the last
+ * row count asked for: the region raster and the field labels both read them, and a diagram the
+ * α mode's cache hands out again (plan §9 phase 15) finds them still there.
+ */
+export function rowHullsOf(diagram: Diagram, rows: number): Hull[] {
+  const kept = ROW_HULLS.get(diagram);
+  if (kept?.rows === rows) return kept.hulls;
+  const hulls = rowHulls(diagram.scan.params, diagram.scan.window, rows);
+  ROW_HULLS.set(diagram, { rows, hulls });
+  return hulls;
 }
 
 /**
@@ -164,9 +163,9 @@ export class RasterCache {
 }
 
 /**
- * Paints `kinds` (cols × rows device pixels, `dpr` per CSS px) into `canvas`, in the colours of
- * `style` at the region opacity. Two-phase fields are a checkerboard (`checkerColour`), as in the
- * slice panel.
+ * Paints `kinds` (cols × rows device pixels, `dpr` per CSS px across and `dprY` down) into
+ * `canvas`, in the colours of `style` at the region opacity. Two-phase fields are a checkerboard
+ * (`checkerColour`), as in the slice panel.
  */
 export function paintRegions(
   canvas: HTMLCanvasElement,
@@ -175,6 +174,7 @@ export function paintRegions(
   rows: number,
   dpr: number,
   style: CSSStyleDeclaration,
+  dprY = dpr,
 ): void {
   canvas.width = cols;
   canvas.height = rows;
@@ -193,7 +193,7 @@ export function paintRegions(
   const image = ctx.createImageData(cols, rows);
   const pixels = new Uint32Array(image.data.buffer);
   for (let r = 0; r < rows; r++) {
-    const y = r / dpr;
+    const y = r / dprY;
     for (let c = 0; c < cols; c++) {
       const k = r * cols + c;
       const kind = kinds[k]!;

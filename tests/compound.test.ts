@@ -200,6 +200,14 @@ describe("the events with a compound", () => {
       ["congruent", 1693.7],
       ["maximum", 1906.6],
     ],
+    // c9 is the core's as well: the solid's dome ends on AB₉'s side in a monotectoid, under (k)'s syntectic.
+    c9: [
+      ["monotectoid", 847.2],
+      ["critical", 902.0],
+      ["congruent", 904.7],
+      ["syntectic", 1357.4],
+      ["critical", 1804.1],
+    ],
   };
 
   it.each(Object.keys(expected) as CompoundPresetId[])(
@@ -385,7 +393,7 @@ describe("the compound's validity limits", () => {
       base.window,
     ).map((i) => [i.check, i.fields]);
 
-  it("pass c1–c8", () => {
+  it("pass c1–c9", () => {
     for (const p of COMPOUND_PRESETS) {
       expect(checkSystem(p.params, p.window, scanOf(p.id))).toMatchObject({ ok: true });
     }

@@ -19,10 +19,10 @@ const ARM_LABEL_GAP = 8;
 /** An arm label's estimated width per character before layout, CSS px (12 px text). */
 const ARM_PX_PER_CHAR = 7;
 /** The summary line's left edge and baseline inside the plot area's top-left corner, CSS px. */
-const SUMMARY_X = 6;
-const SUMMARY_Y = 16;
-/** Between two phases on the summary line. */
-const SUMMARY_SEP = "  ·  ";
+export const SUMMARY_X = 6;
+export const SUMMARY_Y = 16;
+/** Between two phases on the summary line, and the α mode's values on its caption. */
+export const SUMMARY_SEP = "  ·  ";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 

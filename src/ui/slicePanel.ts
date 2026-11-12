@@ -7,12 +7,14 @@
 // touching points (one where two tangents share it), the shading under the envelope in the
 // diagram's field fills, a band of the one-phase fields' stable phase along the bottom edge (as in
 // pTerrain), a dotted guide line from each touching point up to the diagram, and the g axis
-// fitted to T*. With the
+// fitted to T*. On an invariant its three touching points carry its event marker and the shading
+// under its tangent is hatched in the marker's colour. With the
 // metastable branches: the dashed curves, the dashed, lighter tangents of the diagram's
 // metastable extensions with their markers and guides, and the spinodal points. With the lever
 // rule on, a dotted line at X₀ down to the mixture's g on the envelope, with a marker there.
 
 import { area, axisLeft, axisTop, line, scaleLinear, select, type Selection } from "d3";
+import { invariantAt } from "../physics/cut";
 import {
   compoundPointAt,
   distinctTouches,
@@ -30,6 +32,12 @@ import {
 } from "../physics/slice";
 import { spinodalPointsAt } from "../physics/spinodal";
 import { AXIS_LABELS, setAxisLabel } from "./axisLabels";
+import {
+  INVARIANT_FAMILIES,
+  invariantTouches,
+  joinEventMarkers,
+  markerStyle,
+} from "./diagram/eventMarkers";
 import { formatTemperature } from "./format";
 import {
   frameBottomRight,
@@ -38,12 +46,11 @@ import {
   TICK_SPACING,
   xOf,
   xTicks,
-  Y_LABEL_X,
   type PlotSize,
 } from "./geometry";
 import { leverOf } from "./leverText";
 import { joinGuides, joinMarkers } from "./marks";
-import { attachPanel, fitSvg } from "./panel";
+import { attachPanel, fitSvg, placeYLabel } from "./panel";
 import { CHECKER_CELL, DIAMOND_KINDS, fieldKind, KIND_COLOURS, TWO_PHASE_KINDS } from "./regions";
 import { RESIZE_MS, throttle } from "./schedule";
 import type { State, Store } from "./state";
@@ -84,6 +91,41 @@ function appendCheckerPatterns(
   }
 }
 
+/** The hatch's period and its stripes' width, CSS px. */
+const HATCH = { period: 8, stripe: 3 } as const;
+
+/**
+ * Appends to `defs` one hatch per invariant prefix, ids `${prefix}-${family}`: stripes at 45° in
+ * the family's marker colour on the background, the fill under a tangent that touches three
+ * phases (no other field is striped).
+ */
+function appendHatchPatterns(
+  defs: Selection<SVGDefsElement, unknown, null, undefined>,
+  prefix: string,
+): void {
+  for (const family of INVARIANT_FAMILIES) {
+    const pattern = defs
+      .append("pattern")
+      .attr("id", `${prefix}-${family}`)
+      .attr("class", "hatch")
+      .attr("data-family", family)
+      .attr("patternUnits", "userSpaceOnUse")
+      .attr("patternTransform", "rotate(45)")
+      .attr("width", HATCH.period)
+      .attr("height", HATCH.period);
+    pattern
+      .append("rect")
+      .attr("width", HATCH.period)
+      .attr("height", HATCH.period)
+      .style("fill", "var(--bg)");
+    pattern
+      .append("rect")
+      .attr("width", HATCH.stripe)
+      .attr("height", HATCH.period)
+      .style("fill", `var(--invariant-${family})`);
+  }
+}
+
 /** Builds the slice panel inside `container` and keeps it in sync with `store`. */
 export function createSlicePanel(container: HTMLElement, store: Store): void {
   const root = select(container).classed("slice-panel", true);
@@ -92,6 +134,7 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
   const defs = svg.append("defs");
   const clipRect = defs.append("clipPath").attr("id", `slice-clip-${uid}`).append("rect");
   appendCheckerPatterns(defs, `checker-${uid}`);
+  appendHatchPatterns(defs, `hatch-${uid}`);
   const plot = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
   const clipped = plot.append("g").attr("clip-path", `url(#slice-clip-${uid})`);
   const shading = clipped.append("g").attr("class", "shading");
@@ -154,11 +197,23 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
         .ticks(Math.max(2, Math.floor(size.height / TICK_SPACING)))
         .tickSizeOuter(0),
     );
+    placeYLabel(yLabel.node()!, yAxis.node()!, size.height, MARGIN);
     const px = (p: SlicePoint) => xOf(p.X, size);
     const py = (p: SlicePoint) => y(p.g);
     const path = line<SlicePoint>(px, py);
 
-    // Down to the bottom edge, in the field's fill (plan §4 item 2).
+    // Down to the bottom edge, in the field's fill (plan §4 item 2); on an invariant, the tie
+    // lines of its three-phase tangent in the hatch of its marker's colour.
+    const inv = invariantAt(state.diagram.scan.events, cut);
+    const touches = distinctTouches(s.tangents);
+    const onInvariant = invariantTouches(touches, inv);
+    const family = onInvariant.size > 0 ? markerStyle(inv!)!.family : null;
+    const [first, , last] = [...onInvariant];
+    const hatched = (d: Shade) =>
+      family !== null &&
+      d.field.kind === "tie" &&
+      d.field.ends[0].X >= first!.X - 1e-9 &&
+      d.field.ends[1].X <= last!.X + 1e-9;
     const fill = area<SlicePoint>(px, size.height, py);
     shading
       .selectAll<SVGPathElement, Shade>("path")
@@ -166,7 +221,9 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
       .join("path")
       .attr("class", "shade")
       .attr("data-kind", (d) => fieldKind(d.field))
+      .attr("data-invariant", (d) => (hatched(d) ? family : null))
       .attr("fill", (d) => {
+        if (hatched(d)) return `url(#hatch-${uid}-${family})`;
         const kind = fieldKind(d.field);
         return TWO_PHASE_KINDS.includes(kind) ? `url(#checker-${uid}-${kind})` : null;
       })
@@ -226,10 +283,26 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
       .attr("cx", px)
       .attr("cy", py);
 
-    const touches = distinctTouches(s.tangents);
     // From the top of the SVG, which meets the guide coming down from the diagram above.
     joinGuides(guides, touches, "stable", px, -MARGIN.top, py);
-    joinMarkers(markers, touches, "stable", px, py);
+    // On an invariant its three phases take its marker in place of the plain one; the diagram
+    // keeps the plain ones at the ends (cutLayer.ts).
+    joinMarkers(
+      markers,
+      touches.filter((e) => !onInvariant.has(e)),
+      "stable",
+      px,
+      py,
+    );
+    joinEventMarkers(
+      markers,
+      "touch-symbol",
+      [...onInvariant],
+      () => markerStyle(inv!)!,
+      px,
+      py,
+      () => ({ kind: inv!.kind }),
+    );
     // From the panel's top down to the point; clipped where the point lies off the g axis.
     const point = compoundPointAt(params, cut, atCut);
     compoundLine
@@ -264,12 +337,13 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
       .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
       .call(axisTop(x).tickValues(xTicks(size.width)).tickSizeOuter(0));
     frame.attr("d", frameBottomRight(size));
-    yLabel.attr("transform", `translate(${Y_LABEL_X},${MARGIN.top + size.height / 2}) rotate(-90)`);
     drawSlice(store.state);
   };
 
+  // The α mode hides the panel (styles/plots.css) and leaves it undrawn while it moves through the
+  // systems; leaving it changes the system, which draws it again.
   store.subscribe((state, prev) => {
-    if (size.width === 0) return;
+    if (size.width === 0 || state.mode === "alpha") return;
     if (
       state.atCut !== prev.atCut ||
       state.metastableAtCut !== prev.metastableAtCut ||

@@ -1,5 +1,6 @@
-/* The header (plan §4 item 5, §4.3): the logo, the info and theme buttons, the main row with the
-   System menu, Lever, Metastable and Share, and how it compacts on narrow windows. */
+/* The header (plan §4 item 5, §4.3): the logo, the info and theme buttons, the mode toggle (§9
+   phase 16), the main row with the System menu, Lever, Metastable and Share, and how it compacts
+   on narrow windows. */
 
 /* A container, so that the header and the layout switch on the page's width: a media query sees
    the window, a classic scrollbar included, and would switch about 15 px early, as in pTerrain.
@@ -8,12 +9,12 @@
   container: app / inline-size;
 }
 
-/* The header: the logo, the info button, the main row and the theme button at the far right,
-   on one row; on a narrow phone the main row moves under the logo. */
+/* The header: the logo, the info button, the mode toggle, the main row and the theme button at
+   the far right, on one row; on a narrow phone the main row moves under the logo. */
 header {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: "logo info main theme";
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "logo info mode main theme";
   gap: 0.5rem 0.75rem;
   align-items: center;
   margin-bottom: 0.75rem;
@@ -27,6 +28,10 @@ header .info-button {
   grid-area: info;
 }
 
+header .mode-toggle {
+  grid-area: mode;
+}
+
 header .main-row {
   grid-area: main;
 }
@@ -35,18 +40,19 @@ header .theme-toggle {
   grid-area: theme;
 }
 
-/* Below 840 px of page width the header compacts as pTerrain's does: a 96 px logo, and Lever,
+/* Below 944 px of page width the header compacts as pTerrain's does: a 96 px logo, and Lever,
    Metastable and Share as icons alone. The breakpoint was set for the old 246 px logo, where the
    full header (with the two header buttons, an 84 px Lever, a 120 px Metastable and a 104 px Share
-   button, and the gaps: 696 px) left the System menu less than 9rem; the 145 px logo leaves it
-   9rem down to 739 px. */
-@container app (max-width: 52.45rem) {
+   button, and the gaps: 696 px) left the System menu less than 9rem below 840 px; the 145 px logo
+   leaves it 9rem down to 739 px. The mode toggle (92 px and a 12 px gap, §9 phase 16) moved it
+   from 840 px by 104 px. */
+@container app (max-width: 58.95rem) {
   header .logo svg {
     height: 1.5rem;
   }
 
   .main-row > .metastable-toggle,
-  .main-row > .lever-toggle,
+  .main-row .lever-toggle,
   .main-row button.share {
     justify-content: center;
     min-width: 44px;
@@ -70,15 +76,15 @@ header .theme-toggle {
   }
 }
 
-/* Below 583 px of page width (set for the old 164 px compact logo: the compact header, 438 px
-   without the menu, left it less than 9rem; the 96 px one does down to 514 px) the main row moves
-   under the logo, and the two buttons stay on the logo's
-   line. */
-@container app (max-width: 36.4rem) {
+/* Below 687 px of page width (set at 583 px for the old 164 px compact logo: the compact header,
+   438 px without the menu, left it less than 9rem; the 96 px one does down to 514 px; then moved
+   by the mode toggle's 104 px) the main row moves under the logo, and the two buttons and the
+   toggle stay on the logo's line. */
+@container app (max-width: 42.9rem) {
   header {
     grid-template-areas:
-      "logo info . theme"
-      "main main main main";
+      "logo info mode . theme"
+      "main main main main main";
   }
 }
 
@@ -173,6 +179,75 @@ header > .icon-button .icon,
   color: var(--bg);
   background: var(--selected);
   border-color: var(--selected);
+}
+
+/* The Lever button in the box that carries its tooltip while the α mode greys it out. */
+.lever-box {
+  display: flex;
+  flex: none;
+}
+
+.main-row .btn:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* The mode toggle (§9 phase 16), "Δg^M | α": two radio buttons drawn as one segmented control,
+   44 px high, the chosen half filled as a selected toggle is, as the Width control in the
+   Parameters panel. */
+.mode-toggle {
+  display: flex;
+  height: 44px;
+  font-size: 0.875rem;
+}
+
+.mode-toggle label {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0 0.625rem;
+  border: 1px solid var(--muted);
+  cursor: pointer;
+}
+
+.mode-toggle label:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.mode-toggle label:last-child {
+  border-left: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+/* The radio itself is hidden; its label is the target, and its focus ring shows on the label. */
+.mode-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.mode-toggle label:has(input:checked) {
+  color: var(--bg);
+  background: var(--selected);
+  border-color: var(--selected);
+}
+
+.mode-toggle label:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The system menu while the α mode greys it out. */
+.system-menu select:disabled {
+  cursor: default;
+}
+
+.system-menu:has(select:disabled) .system-label {
+  color: var(--muted);
 }
 
 /* Share keeps its width as its label turns to *Copied*. */

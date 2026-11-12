@@ -31,10 +31,16 @@ export function fieldsAt(params: Params, T: number, events: readonly DiagramEven
     }
   }
   if (!hull) throw new HullError(`the hull cannot be computed near ${T} K`);
-  const inv = events.find(
-    (e) => INVARIANT_KINDS.includes(e.kind) && Math.abs(e.T - T) <= AT_INVARIANT,
-  );
+  const inv = invariantAt(events, T);
   return inv ? withInvariant(hull.fields, inv, T, params) : hull.fields;
+}
+
+/** The invariant within AT_INVARIANT of T, whose three-phase tangent a cut there draws, or null. */
+export function invariantAt(events: readonly DiagramEvent[], T: number): DiagramEvent | null {
+  return (
+    events.find((e) => INVARIANT_KINDS.includes(e.kind) && Math.abs(e.T - T) <= AT_INVARIANT) ??
+    null
+  );
 }
 
 /** `fields` with the tie lines across the invariant's span replaced by its own two. */

@@ -35,6 +35,16 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
           "or metatectic), wrapping round to the lowest.",
       },
       {
+        selector: "header .mode-toggle",
+        context: "",
+        name: "Mode",
+        text:
+          "Switches between the Δ<i>g</i><sup><i>M</i></sup> mode, a cut through one system " +
+          "with its Gibbs energy curves below, and the <i>α</i> mode, which moves through the " +
+          "systems by their interaction parameters on a pad below the diagram. The System menu, " +
+          "Lever and the Parameters panel's fields are greyed out in the <i>α</i> mode.",
+      },
+      {
         selector: ".main-row .system-menu",
         context: "main-row",
         name: "System menu",
@@ -64,13 +74,76 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
         name: "Share",
         text:
           "Copies a link (on a phone, opens the share menu) that restores the system, the cut " +
-          "and, with the lever rule on, <i>X</i>₀.",
+          "and, with the lever rule on, <i>X</i>₀; in the <i>α</i> mode, the system and " +
+          "<i>Stay on the axes</i>, opening in the <i>α</i> mode.",
       },
       {
         selector: "header .theme-toggle",
         context: "",
         name: "Theme",
         text: "Switches between the light and dark theme.",
+      },
+    ],
+  },
+  {
+    heading: "Below the diagram, in the α mode",
+    keys: [
+      {
+        selector: ".alpha-pad",
+        context: "",
+        name: "α pad",
+        text:
+          "Drag the knob, or press anywhere on the pad, to choose <i>α</i><sub>s</sub> " +
+          "(across) and <i>α</i><sub>l</sub> (up), from −30 to +30 kJ/mol; the diagram " +
+          "follows. The open dots are the grid presets. The arrow keys move the knob by 1 " +
+          "kJ/mol, by 5 with Shift, and Home moves it to the centre.",
+      },
+      {
+        selector: ".alpha-lock",
+        context: "",
+        name: "Stay on the axes",
+        text:
+          "Keeps the knob on the two axes, so that one <i>α</i> changes at a time; it passes " +
+          "through the centre to change axis. Unticked, as it opens, the knob changes both at once.",
+      },
+      {
+        selector: ".tmb-input",
+        context: "",
+        name: "T_m,B slider",
+        text:
+          "Sets the melting point of B, from 805 to 2400 K; A's stays at 800 K. Far above " +
+          "A's, it turns eutectics into peritectics. The " +
+          "values are also in number fields: right of the slider, where they fit, until a compound " +
+          "is added, else beside the plots, or below them on a phone.",
+      },
+      {
+        selector: ".alpha-add-compound",
+        context: "",
+        name: "Line Compound",
+        text:
+          "Adds a line compound, which brings its reactions into the diagram. A compound with " +
+          "a range is not used in the <i>α</i> mode.",
+      },
+      {
+        selector: ".alpha-compound",
+        context: "",
+        name: "Compound sliders",
+        text:
+          "With <i>Line Compound</i> ticked, set the compound's <i>X</i><sub>c</sub>, on " +
+          "eleven stops from A₉B to AB₉, Δ<i>h</i><sub>f</sub> and Δ<i>s</i><sub>f</sub>; " +
+          "they lie flat in a narrow window, and on a phone stand in the pad's place. " +
+          "Δ<i>h</i><sub>f</sub> gives congruent and incongruent " +
+          "melting, Δ<i>s</i><sub>f</sub> adds the eutectoid and peritectoid, and " +
+          "<i>X</i><sub>c</sub> away from AB the metatectic and monotectoid.",
+      },
+      {
+        selector: ".alpha-view",
+        context: "",
+        name: "Pad or sliders",
+        text:
+          "On a phone, with <i>Line Compound</i> ticked, shows the <i>α</i> pad or the " +
+          "compound's sliders, named by its formula, in the pad's place. Ticking " +
+          "<i>Line Compound</i> shows the sliders.",
       },
     ],
   },
@@ -155,6 +228,10 @@ the compositions of its two phases.</p>
     arrows</span> in the upper plot to change the cut shown in the lower plot.</li>
   <li>Use one of the preset systems, or edit your own.</li>
   <li>Read the phases' shares with the lever rule, or show the metastable lines.</li>
+  <li>Find the invariants by their markers, ▼ and ▲ coloured by kind; hover one for its name,
+    and see Model Details for the key.</li>
+  <li>Switch to the <i>α</i> mode to move through the systems on a pad of
+    <i>α</i><sub>s</sub> and <i>α</i><sub>l</sub>.</li>
   <li>Save a system as a file, or share a link to it.</li>
 </ul>
 ${sections}`;
@@ -172,13 +249,25 @@ function fillKeys(body: HTMLElement): void {
     const copy = control.cloneNode(true) as Element;
     const originals = [control, ...control.querySelectorAll("*")];
     [copy, ...copy.querySelectorAll("*")].forEach((el, k) => {
-      for (const attribute of ["id", "for", "title", "disabled"]) el.removeAttribute(attribute);
+      // Without its name, a radio's copy would join the page's group and uncheck the original.
+      for (const attribute of ["id", "for", "name", "title", "disabled"]) {
+        el.removeAttribute(attribute);
+      }
       // A clone keeps the markup's choice, not the one made since.
       const original = originals[k];
       if (el instanceof HTMLSelectElement) el.value = (original as HTMLSelectElement).value;
       if (el instanceof HTMLInputElement) el.checked = (original as HTMLInputElement).checked;
     });
     copy.querySelectorAll('input[type="file"]').forEach((el) => el.remove());
+    // The compound's sliders are hidden until *Line Compound* is ticked; their copy is shown.
+    if (copy instanceof HTMLElement) copy.hidden = false;
+    // The pad's copy is drawn at the key's size: a viewBox of the pad's own.
+    const padSvg = copy.matches(".alpha-pad") ? copy.querySelector("svg") : null;
+    if (padSvg) {
+      const side = padSvg.getAttribute("width") ?? "0";
+      padSvg.setAttribute("viewBox", `0 0 ${side} ${side}`);
+      for (const attribute of ["width", "height"]) padSvg.removeAttribute(attribute);
+    }
     key.replaceChildren(copy);
     // The theme button shows one symbol at a time; its key shows both, moon / sun.
     if (copy.classList.contains("theme-toggle")) {

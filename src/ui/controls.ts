@@ -3,14 +3,17 @@
 // dragging and for keyboard users, and the readout for screen readers, with the lever rule's line
 // while it is on. The System menu is in systemMenu.ts, the Parameters panel in systemPanel.ts,
 // Share in share.ts, the Lever toggle and readout in leverControls.ts, and the logo's snap to the
-// next invariant in logo.ts.
+// next invariant in logo.ts. In the α mode (§9 phase 16) the readout lists the system's invariants
+// instead of the fields along the cut.
 
+import { invariantsOf } from "../physics/events";
 import { nameField, type NamedField } from "../physics/fields";
 import { spokenName } from "./compoundText";
 import { formatComposition, formatTemperature } from "./format";
 import { EYE, EYE_OFF, icon } from "./icons";
 import { leverOf, leverSentence } from "./leverText";
-import type { State, Store } from "./state";
+import { invariantText } from "./logo";
+import { labelsWait, type State, type Store } from "./state";
 
 /** The slider and number field that set T*. */
 export function createCutInput(container: HTMLElement, store: Store): void {
@@ -126,8 +129,20 @@ export function readoutRows(state: Readonly<State>): ReadoutRow[] {
 }
 
 /**
+ * What the α mode's readout says (plan §9 phase 16): the system's invariants, by the names the
+ * logo's tooltip uses ("eutectic, 634 K"), or that it has none.
+ */
+export function invariantsReadout(state: Readonly<State>): string {
+  const invariants = invariantsOf(state.diagram.scan.events);
+  if (invariants.length === 0) return "This system has no invariant.";
+  return `Invariants: ${invariants.map(invariantText).join("; ")}.`;
+}
+
+/**
  * The fields along the cut, for screen readers only (plan §4 item 4): on screen the bold values
- * under the diagram's X axis show them, and those are `aria-hidden`.
+ * under the diagram's X axis show them, and those are `aria-hidden`. In the α mode, the system's
+ * invariants in its place, in a polite live region, once each full diagram is on screen (a
+ * preview, §9 phase 15, is skipped).
  */
 export function createReadout(container: HTMLElement, store: Store): void {
   const root = document.createElement("section");
@@ -140,11 +155,24 @@ export function createReadout(container: HTMLElement, store: Store): void {
   // The lever rule's line (plan §4 item 7), while it is on.
   const leverLine = document.createElement("p");
   leverLine.className = "readout-lever";
-  root.append(heading, list, leverLine);
+  // Always in the page, so that a change of its text is announced.
+  const invariants = document.createElement("p");
+  invariants.className = "readout-invariants";
+  invariants.setAttribute("aria-live", "polite");
+  root.append(heading, list, leverLine, invariants);
   container.append(root);
+
+  const syncInvariants = () => {
+    const state = store.state;
+    if (state.mode === "dg") invariants.textContent = "";
+    else if (!labelsWait(state)) invariants.textContent = invariantsReadout(state);
+  };
 
   const sync = () => {
     const state = store.state;
+    const alpha = state.mode === "alpha";
+    heading.hidden = alpha;
+    list.hidden = alpha;
     heading.textContent = readoutHeading(state);
     list.replaceChildren(
       ...readoutRows(state).map((row) => {
@@ -160,15 +188,23 @@ export function createReadout(container: HTMLElement, store: Store): void {
       : "";
   };
   sync();
+  syncInvariants();
   store.subscribe((state, prev) => {
     if (
       state.atCut !== prev.atCut ||
       state.cut !== prev.cut ||
       state.components !== prev.components ||
       state.showLever !== prev.showLever ||
-      state.X0 !== prev.X0
+      state.X0 !== prev.X0 ||
+      state.mode !== prev.mode
     )
       sync();
+    if (
+      state.diagram !== prev.diagram ||
+      state.mode !== prev.mode ||
+      state.alphaMoving !== prev.alphaMoving
+    )
+      syncInvariants();
   });
 }
 
