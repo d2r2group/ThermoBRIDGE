@@ -163,9 +163,15 @@
   stroke-width: 1.75;
 }
 
-/* Each invariant's temperature, small and muted, beside the right end of its line. */
-.phase-diagram .invariant-temperature {
+/* Each marked point's name and temperature ("Eutectic, 634 K"), small and muted, beside its
+   marker, while the Labels button's bottom half is on. */
+.phase-diagram .point-label {
   fill: var(--muted);
+  /* A halo of the background keeps the name legible over the dashed and dotted lines. */
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   pointer-events: none;

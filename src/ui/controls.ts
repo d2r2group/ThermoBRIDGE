@@ -1,10 +1,10 @@
 // The controls (plan §4 items 4–6), adapted from pTerrain's ui/controls.ts. The main row's
-// Metastable button; in the side column the slider and number field for T*, as a fallback for
-// dragging and for keyboard users, and the readout for screen readers, with the lever rule's line
-// while it is on. The System menu is in systemMenu.ts, the Parameters panel in systemPanel.ts,
-// Share in share.ts, the Lever toggle and readout in leverControls.ts, and the logo's snap to the
-// next invariant in logo.ts. In the α mode (§9 phase 16) the readout lists the system's invariants
-// instead of the fields along the cut.
+// Metastable and Labels buttons; in the side column the slider and number field for T*, as a
+// fallback for dragging and for keyboard users, and the readout for screen readers, with the lever
+// rule's line while it is on. The System menu is in systemMenu.ts, the Parameters panel in
+// systemPanel.ts, Share in share.ts, the Lever toggle and readout in leverControls.ts, and the
+// logo's snap to the next invariant in logo.ts. In the α mode (§9 phase 16) the readout lists the
+// system's invariants instead of the fields along the cut.
 
 import { invariantsOf } from "../physics/events";
 import { nameField, type NamedField } from "../physics/fields";
@@ -92,6 +92,51 @@ export function createMetastableToggle(container: HTMLElement, store: Store): vo
     const shown = store.state.showMetastable;
     button.setAttribute("aria-pressed", String(shown));
     eye.innerHTML = icon(shown ? EYE : EYE_OFF);
+  };
+  sync();
+  store.subscribe(sync);
+}
+
+/** The Labels button's name for what it shows: "field names", "…and point names", "none". */
+export function labelsShown({ showFieldLabels, showPointLabels }: Readonly<State>): string {
+  const shown = [
+    ...(showFieldLabels ? ["field names"] : []),
+    ...(showPointLabels ? ["point names"] : []),
+  ];
+  return shown.length ? shown.join(" and ") : "none";
+}
+
+/**
+ * The Labels button, which cycles through the diagram's labels (`Store.cycleLabels`): its top
+ * half, "L+β", stands for the field names and its bottom half, a triangle, for the marked points'
+ * names ("Eutectic, 634 K"); each half is filled while its labels are shown.
+ */
+export function createLabelsToggle(container: HTMLElement, store: Store): void {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "labels-toggle btn";
+  const fields = document.createElement("span");
+  fields.className = "half fields";
+  // "L+β" is drawn by CSS (header.css) as an icon, so that the button's name, which says what it
+  // shows, is its only text.
+  const points = document.createElement("span");
+  points.className = "half points";
+  points.innerHTML =
+    '<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">' +
+    '<path d="M5 1.5 9 8.5H1Z" fill="currentColor"/></svg>';
+  button.append(fields, points);
+  button.addEventListener("click", () => store.cycleLabels());
+  container.append(button);
+
+  const sync = () => {
+    const state = store.state;
+    button.dataset.fields = String(state.showFieldLabels);
+    button.dataset.points = String(state.showPointLabels);
+    const shown = labelsShown(state);
+    button.setAttribute("aria-label", `Labels: ${shown}`);
+    button.title =
+      `Labels on the diagram: ${shown}. Click for field names, then also the points' names ` +
+      "and temperatures, then none";
   };
   sync();
   store.subscribe(sync);

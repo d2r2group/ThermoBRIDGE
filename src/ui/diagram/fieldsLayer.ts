@@ -37,7 +37,7 @@ export interface FieldsLayer {
   /**
    * Places the field labels, each at its field's pole of inaccessibility, in the curve colour for
    * a one-phase field and in --fg for a two-phase one, and a line compound's name beside its
-   * line, and returns their outlines, which the invariant temperatures avoid. They depend on the
+   * line, and returns their outlines, which the points' names avoid. They depend on the
    * system, the plot size and `keepOut` (the α mode's caption, which they keep clear of) only, so
    * a cut drag leaves them.
    */

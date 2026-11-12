@@ -69,6 +69,15 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
           "slice, the curves off the envelope.",
       },
       {
+        selector: ".main-row .labels-toggle",
+        context: "main-row",
+        name: "Labels",
+        text:
+          "Steps through the diagram's labels: the field names (the top half, filled), then " +
+          "also each marker's name and temperature, such as “Eutectic, 634 K” (the bottom " +
+          "half), then none. It opens on the field names alone.",
+      },
+      {
         selector: ".main-row .share",
         context: "main-row",
         name: "Share",

@@ -64,7 +64,7 @@ export function mean(values: readonly number[]): number {
 /** A box on the plot, CSS px: [left, top, right, bottom]. */
 export type Box = [number, number, number, number];
 
-/** An invariant temperature's text box around its baseline, CSS px (11 px text). */
+/** A marked point's name's text box around its baseline, CSS px (11 px text). */
 const INVARIANT_T = { ascent: 8, descent: 3, gap: 3, inset: 3 } as const;
 /**
  * The cut's knob sits this far into the plot from its right edge, CSS px, and covers a text
@@ -72,7 +72,7 @@ const INVARIANT_T = { ascent: 8, descent: 3, gap: 3, inset: 3 } as const;
  */
 export const KNOB_CLEARANCE = 14;
 
-/** Where an invariant's temperature goes: its text anchor at (x, y), the baseline. */
+/** Where a marked point's name goes: its text anchor at (x, y), the baseline. */
 export interface TextSpot {
   x: number;
   y: number;
@@ -80,11 +80,12 @@ export interface TextSpot {
 }
 
 /**
- * Where the temperature of an invariant line ending at plot-area (x, y) goes (plan §4 item 1),
- * for a text `width` px wide: the first of above-left, below-left, above-right and below-right
- * of the line's right end that stays inside the plot, clear of the cut's knob at the right
- * edge, and crosses none of the polylines `lines` (plot-area px: the diagram passes the stable
- * boundaries and the field labels' outlines); above and to the left when none does.
+ * Where a text `width` px wide goes beside the plot-area point (x, y) on an invariant line (plan
+ * §4 item 1): the first of above-left, below-left, above-right and below-right of the point,
+ * `inset` px to the side, that stays inside the plot, clear of the cut's knob at the right edge,
+ * and crosses none of the polylines `lines` (plot-area px: the diagram passes the stable
+ * boundaries, the field labels' outlines and the markers' boxes); above and to the left when none
+ * does.
  */
 export function placeInvariantT(
   x: number,
@@ -92,8 +93,9 @@ export function placeInvariantT(
   width: number,
   size: PlotSize,
   lines: readonly (readonly [number, number][])[],
+  inset: number = INVARIANT_T.inset,
 ): TextSpot {
-  const { ascent, descent, gap, inset } = INVARIANT_T;
+  const { ascent, descent, gap } = INVARIANT_T;
   const right = size.width - KNOB_CLEARANCE;
   const above = y - gap - descent;
   const below = y + gap + ascent;

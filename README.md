@@ -40,6 +40,9 @@ Details has the key.
   stays put while the cut moves, so moving it traces a cooling path.
 - **Metastable** shows or hides the boundaries carried past each invariant
   (dashed), the spinodals (dotted) and the curves off the envelope.
+- **Labels**, the split "L+β / ▲" button, steps through the diagram's labels:
+  the field names (as it opens), then also each marker's name and temperature
+  (e.g. "Eutectic, 634 K"), then none.
 - **Parameters** edits $\alpha_\mathrm{l}$ and $\alpha_\mathrm{s}$, the
   components ($T_\mathrm{m}$, $\Delta s$), an intermediate compound (a line
   compound or one with a range) and the window (fitted automatically while

@@ -2,7 +2,7 @@
 // knob or the slider reaches, the page draws its preview (or its full diagram, when that is
 // cached) and asks the Web Worker for the full one (fullDiagrams.ts). Once the knob has rested
 // SETTLE_MS, or is released, the full diagram replaces the preview as soon as it is there. The
-// field labels and invariant temperatures wait for that rest even on a cached full diagram
+// field labels and points' names wait for that rest even on a cached full diagram
 // (`State.alphaMoving`), so that they do not flash on and off. A position that cannot be computed
 // keeps the last diagram on screen. The pad (alphaPad.ts, §9 phase 17) passes pointer moves to
 // `move` at most once per frame (schedule.ts `perFrame`), so that a slow preview drops positions

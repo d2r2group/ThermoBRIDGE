@@ -2,7 +2,7 @@
 // its layers from the bottom up, the axes with the component names under the ends of the X axis,
 // the plot size, and the subscription that redraws what a change touches. The layers draw
 // themselves: the field fills and labels (fieldsLayer.ts), the lines (linesLayer.ts), the
-// invariant temperatures (invariantTemps.ts), the cut (cutLayer.ts), the lever rule
+// marked points' names (pointLabels.ts), the cut (cutLayer.ts), the lever rule
 // (leverLayer.ts) and the α mode's caption (alphaCaption.ts).
 
 import { axisBottom, axisLeft, scaleLinear, select } from "d3";
@@ -26,7 +26,7 @@ import { createAlphaCaption } from "./alphaCaption";
 import type { Box } from "../fieldLabels";
 import { createCutLayer } from "./cutLayer";
 import { createFieldsLayer } from "./fieldsLayer";
-import { drawInvariantTemps } from "./invariantTemps";
+import { drawPointLabels } from "./pointLabels";
 import { createLeverLayer } from "./leverLayer";
 import { drawLines } from "./linesLayer";
 
@@ -63,7 +63,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
   };
   // A line compound's name, on a patch that hides the lines beneath it.
   const compoundLabelLayer = layer("compound-labels");
-  const invariantTLayer = layer("invariant-temperatures");
+  const pointLabelLayer = layer("point-labels");
   const points = layer("event-points");
   // Guide lines run from the cut down to the bottom of the SVG, where the slice panel's go on;
   // the metastable ones under the stable ones.
@@ -144,17 +144,19 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
   let captionBox: Box | null = null;
 
   /**
-   * The field labels, which keep clear of the α mode's caption (`captionBox`), and the invariant
-   * temperatures, which keep clear of the labels; a preview (plan §9 phase 15), or any diagram
-   * while the α knob moves, hides both rather than leave them stale or flash them.
+   * The field labels, which keep clear of the α mode's caption (`captionBox`), and the marked
+   * points' names, which keep clear of the labels and the caption, each while the Labels button
+   * shows it; a preview (plan §9 phase 15), or any diagram while the α knob moves, hides both
+   * rather than leave them stale or flash them.
    */
   const drawLabelled = (state: Readonly<State>) => {
-    if (labelsWait(state)) {
-      fields.clearLabels();
-      invariantTLayer.selectAll("*").remove();
-      return;
-    }
-    drawInvariantTemps(invariantTLayer, state, size, fields.drawLabels(state, size, captionBox));
+    const wait = labelsWait(state);
+    const outlines =
+      state.showFieldLabels && !wait ? fields.drawLabels(state, size, captionBox) : [];
+    if (!state.showFieldLabels || wait) fields.clearLabels();
+    if (state.showPointLabels && !wait)
+      drawPointLabels(pointLabelLayer, state, size, outlines, captionBox);
+    else pointLabelLayer.selectAll("*").remove();
   };
 
   const drawAll = () => {
@@ -182,7 +184,12 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
       state.mode !== prev.mode
     )
       drawAll();
-    else if (state.alphaMoving !== prev.alphaMoving) drawLabelled(state);
+    else if (
+      state.alphaMoving !== prev.alphaMoving ||
+      state.showFieldLabels !== prev.showFieldLabels ||
+      state.showPointLabels !== prev.showPointLabels
+    )
+      drawLabelled(state);
     else if (
       state.cut !== prev.cut ||
       state.atCut !== prev.atCut ||
@@ -208,7 +215,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     if (size.width > 0) fields.paint(store.state, size);
   });
 
-  // The bold values, the field labels, the invariant temperatures and both plots' Y-axis labels
+  // The bold values, the field labels, the points' names and both plots' Y-axis labels
   // are placed from their measured text, so once Lato has loaded (it swaps in for a fallback font)
   // they are measured and placed again.
   void document.fonts?.ready.then(() => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { preset } from "../src/physics/presets";
 import { cutAfterKey, snapCut } from "../src/ui/cutDrag";
 import { TAt, yOf } from "../src/ui/geometry";
+import { labelsShown } from "../src/ui/controls";
 import { Store } from "../src/ui/state";
 
 describe("Store", () => {
@@ -12,6 +13,26 @@ describe("Store", () => {
     expect(store.state.diagram.scan.events.map((e) => e.kind)).toContain("eutectic");
     expect(store.state.diagram.boundaries.length).toBeGreaterThan(0);
     expect(store.state.diagram.naming.solid).toBe("alphaBeta");
+  });
+
+  it("opens on the field names alone, and the Labels button steps to both, to none and back", () => {
+    const store = new Store(preset("h"));
+    const steps = [labelsShown(store.state)];
+    for (let k = 0; k < 3; k++) {
+      store.cycleLabels();
+      steps.push(labelsShown(store.state));
+    }
+    expect(steps).toEqual(["field names", "field names and point names", "none", "field names"]);
+  });
+
+  it("keeps the labels through the α mode and back", () => {
+    const store = new Store(preset("h"));
+    store.cycleLabels();
+    store.setMode("alpha");
+    store.cycleLabels();
+    expect(labelsShown(store.state)).toBe("none");
+    store.setMode("dg");
+    expect(labelsShown(store.state)).toBe("none");
   });
 
   it("clamps the cut into the window and ignores values that are not numbers", () => {

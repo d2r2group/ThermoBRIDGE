@@ -53,7 +53,7 @@ export function formatTemperature(T: number): string {
   return `${T.toFixed(1)} K`;
 }
 
-/** An invariant temperature as the logo's snap names it: whole kelvins, "634 K". */
+/** An invariant temperature as the logo's snap and the markers name it: whole kelvins, "634 K". */
 export function formatInvariantT(T: number): string {
   return `${Math.round(T)} K`;
 }

@@ -47,7 +47,7 @@ const METASTABLE = {
   ".slice-panel .spinodal-point": 2,
 } as const;
 
-test("(h) labels its fields and writes the eutectic's temperature at its right end", async ({
+test("(h) labels its fields, and the Labels button adds the eutectic's name beside its marker", async ({
   page,
 }) => {
   const labels = diagram(page).locator(".field-label");
@@ -62,13 +62,34 @@ test("(h) labels its fields and writes the eutectic's temperature at its right e
   expect(await fill("L")).not.toBe(await fill("α"));
   expect(await fill("L + β")).toBe(await fill("α + β"));
 
-  const temperature = diagram(page).locator(".invariant-temperature");
-  await expect(temperature).toHaveText(["634 K"]);
-  const t = (await temperature.boundingBox())!;
-  const line = (await diagram(page).locator(".invariant").boundingBox())!;
-  // Beside the right end, above or below the line.
-  expect(Math.abs(t.x + t.width - (line.x + line.width))).toBeLessThan(10);
-  expect(Math.abs(t.y + t.height / 2 - line.y)).toBeLessThan(15);
+  // The points' names wait for the button's second state; no temperature is at the line's end.
+  const pointLabels = diagram(page).locator(".point-label");
+  await expect(pointLabels).toHaveCount(0);
+  const button = page.locator(".labels-toggle");
+  await expect(button).toHaveAccessibleName("Labels: field names");
+  await button.click();
+  await expect(button).toHaveAccessibleName("Labels: field names and point names");
+  await expect(pointLabels).toHaveText(["Eutectic, 634 K"]);
+  const t = (await pointLabels.boundingBox())!;
+  const marker = (await diagram(page).locator(".diagram-point").boundingBox())!;
+  // Beside the marker, above or below the line, and clear of it.
+  const mx = marker.x + marker.width / 2;
+  const my = marker.y + marker.height / 2;
+  expect(Math.min(Math.abs(t.x - mx), Math.abs(t.x + t.width - mx))).toBeLessThan(12);
+  expect(Math.abs(t.y + t.height / 2 - my)).toBeLessThan(15);
+  // The text's box takes in its 1.5 px halo.
+  const halo = 1.5;
+  expect(t.x + halo >= marker.x + marker.width || t.x + t.width - halo <= marker.x).toBe(true);
+
+  // Then neither, then the field names alone again.
+  await button.click();
+  await expect(button).toHaveAccessibleName("Labels: none");
+  await expect(labels).toHaveCount(0);
+  await expect(pointLabels).toHaveCount(0);
+  await button.click();
+  await expect(button).toHaveAccessibleName("Labels: field names");
+  await expect(labels.first()).toBeVisible();
+  await expect(pointLabels).toHaveCount(0);
 });
 
 test("below the eutectic the extensions carry dashed tangents, aligned with their guides", async ({
@@ -111,7 +132,6 @@ test("hiding the metastable branches leaves the shading and the stable lines unc
   }
   expect(await stableSnapshot(page)).toEqual(before);
   await expect(diagram(page).locator(".field-label").first()).toBeVisible();
-  await expect(diagram(page).locator(".invariant-temperature")).toBeVisible();
 
   await button.click();
   for (const sel of all) expect(await displays(page, sel), sel).not.toContain("none");
@@ -122,7 +142,12 @@ test("the labels are placed again for a new system and a new plot size", async (
   const names = () => diagram(page).locator(".field-label").allTextContents();
   await page.getByRole("combobox", { name: "System" }).selectOption("k");
   await expect.poll(names).toEqual(expect.arrayContaining(["L₁ + L₂", "α₁ + α₂"]));
-  await expect(diagram(page).locator(".invariant-temperature")).toHaveText(["1357 K"]);
+  await page.locator(".labels-toggle").click();
+  await expect(diagram(page).locator(".point-label")).toHaveText([
+    "Critical point of the solid, 902 K",
+    "Syntectic, 1357 K",
+    "Critical point of the liquid, 1804 K",
+  ]);
   const placed = () =>
     diagram(page)
       .locator(".field-label")

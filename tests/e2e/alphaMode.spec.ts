@@ -92,10 +92,9 @@ test("the α mode greys out the menu and Lever and hides the cut, the lever and 
   // The slice panel's box stays, so the diagram does not move.
   const slice = (await slicePanel(page).boundingBox())!;
   expect(slice.height).toBeGreaterThan(300);
-  // Kept: the fields, their labels, Metastable, Share and the theme button.
+  // Kept: the fields, their labels, Metastable, Labels, Share and the theme button.
   await expect(diagram(page).locator(".field-label").first()).toBeVisible();
-  await expect(diagram(page).locator(".invariant-temperature").first()).toBeVisible();
-  for (const name of ["Metastable", "Share", /Switch to/]) {
+  for (const name of ["Metastable", /^Labels/, "Share", /Switch to/]) {
     await expect(page.getByRole("button", { name })).toBeEnabled();
   }
 

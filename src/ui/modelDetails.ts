@@ -263,7 +263,7 @@ export function modelDetailsHtml(): string {
   peak above the window's top, with ${tex`\alpha_\mathrm{l}`} positive and
   ${tex`\alpha_\mathrm{s}`} negative, is cut off. While the knob moves,
   a coarser diagram, scanned every ${COARSE_STEP} K, is drawn without its field labels and
-  invariant temperatures; the full diagram replaces it once the knob rests.</p>
+  points' names; the full diagram replaces it once the knob rests.</p>
 </section>
 <section>
   <h3>Presets</h3>

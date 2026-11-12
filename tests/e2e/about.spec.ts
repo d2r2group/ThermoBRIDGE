@@ -44,6 +44,7 @@ test("it opens a modal overlay that summarizes the app and explains each control
     "System menu",
     "Lever",
     "Metastable",
+    "Labels",
     "Share",
     "Theme",
     "α pad",

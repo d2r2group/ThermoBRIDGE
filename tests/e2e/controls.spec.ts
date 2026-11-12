@@ -460,8 +460,8 @@ test("the main row's controls are all 44 px high, and the buttons at least 44 px
         return { tag: el.tagName, width: r.width, height: r.height, top: r.top };
       }),
     );
-    // The System menu, Lever, Metastable and Share.
-    expect(boxes).toHaveLength(4);
+    // The System menu, Lever, Metastable, Labels and Share.
+    expect(boxes).toHaveLength(5);
     for (const b of boxes) {
       expect(b.height, `${width}`).toBe(44);
       expect(b.top, `${width}`).toBe(boxes[0]!.top);

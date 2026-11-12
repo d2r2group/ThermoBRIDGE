@@ -1,6 +1,6 @@
 // The α mode's preview on the diagram (plan §9 phase 15), driven through the page's `?timing` hook
 // so that the knob's rest is under the test's control: a preview hides the field labels and the
-// invariant temperatures rather than leave them stale, and the full diagram brings them back.
+// points' names rather than leave them stale, and the full diagram brings them back.
 
 import type { createAlphaDrag } from "../../src/ui/alphaDrag";
 import type { Store } from "../../src/ui/state";
@@ -13,7 +13,9 @@ interface Hook {
 test("a preview hides the labels until the full diagram replaces it", async ({ page }) => {
   await page.goto("./?timing");
   const labels = diagram(page).locator(".field-labels > text");
-  const temps = diagram(page).locator(".invariant-temperatures > *");
+  const temps = diagram(page).locator(".point-labels > *");
+  // The points' names are on the Labels button's second state.
+  await page.locator(".labels-toggle").click();
   await expect(labels).not.toHaveCount(0);
   await expect(temps).not.toHaveCount(0);
 

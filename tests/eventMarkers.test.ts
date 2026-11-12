@@ -12,6 +12,7 @@ import {
   markerStyle,
   markerTitle,
 } from "../src/ui/diagram/eventMarkers";
+import { pointLabel } from "../src/ui/diagram/pointLabels";
 
 // The diagram's event markers: shape by reaction, colour by prefix, fill by suffix, and a preset
 // that shows each.
@@ -77,6 +78,9 @@ describe("the event markers", () => {
     expect(markerTitle(find("c9", "critical"))).toBe("critical point of the solid, 902 K");
     expect(markerTitle(find("k", "syntectic"))).toBe("syntectic, 1357 K");
     expect(markerTitle(find("c7", "congruent"))).toBe("congruent transformation, 685 K");
+    // The Labels button writes the tooltip on the diagram, capitalised.
+    expect(pointLabel(find("h", "eutectic"))).toBe("Eutectic, 634 K");
+    expect(pointLabel(find("c9", "critical"))).toBe("Critical point of the solid, 902 K");
   });
 
   it("point ▼ down and ▲ up about the point", () => {

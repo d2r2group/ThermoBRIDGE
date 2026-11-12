@@ -1,6 +1,6 @@
 /* The header (plan §4 item 5, §4.3): the logo, the info and theme buttons, the mode toggle (§9
-   phase 16), the main row with the System menu, Lever, Metastable and Share, and how it compacts
-   on narrow windows. */
+   phase 16), the main row with the System menu, Lever, Metastable, Labels and Share, and how it
+   compacts on narrow windows. */
 
 /* A container, so that the header and the layout switch on the page's width: a media query sees
    the window, a classic scrollbar included, and would switch about 15 px early, as in pTerrain.
@@ -151,7 +151,7 @@ header > .icon-button .icon,
 }
 
 /* The main row (plan §4 item 5): the System menu, which takes the row's free width and shrinks
-   first, then Lever, Metastable and Share. */
+   first, then Lever, Metastable, Labels and Share. */
 .main-row {
   display: flex;
   gap: 0.375rem;
@@ -179,6 +179,41 @@ header > .icon-button .icon,
   color: var(--bg);
   background: var(--selected);
   border-color: var(--selected);
+}
+
+/* The Labels button: a 44 px square split into a top half, "L+β" for the field names, and a bottom
+   half, a triangle for the marked points' names, each filled as a selected toggle is while its
+   labels are shown. */
+.labels-toggle.btn {
+  display: inline-grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  align-items: stretch;
+  width: 44px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.labels-toggle .half {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.labels-toggle .fields::before {
+  content: "L+β";
+  font-size: 11px;
+  line-height: 1;
+}
+
+.labels-toggle .points {
+  border-top: 1px solid var(--muted);
+}
+
+.labels-toggle[data-fields="true"] .fields,
+.labels-toggle[data-points="true"] .points {
+  color: var(--bg);
+  background: var(--selected);
 }
 
 /* The Lever button in the box that carries its tooltip while the α mode greys it out. */

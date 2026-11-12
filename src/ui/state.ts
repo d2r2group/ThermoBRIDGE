@@ -80,6 +80,10 @@ export interface State {
   metastableAtCut: MetastableAtCut[];
   /** Whether the metastable lines are drawn (plan §1), set by the Metastable toggle. */
   showMetastable: boolean;
+  /** Whether the diagram names its fields (and a line compound), set by the Labels button. */
+  showFieldLabels: boolean;
+  /** Whether the diagram names each marked point ("Eutectic, 634 K"), set by the Labels button. */
+  showPointLabels: boolean;
   /** Whether the lever rule is shown (plan §4 item 7), set by the Lever toggle. */
   showLever: boolean;
   /** The lever rule's overall composition X₀ in [0, 1]; kept when the cut or the system changes. */
@@ -89,7 +93,7 @@ export interface State {
   /**
    * Whether the α mode's knob or slider is moving (plan §9 phase 15): set by each move and cleared
    * once it rests or is released, so that a full diagram from the cache drawn mid-drag hides its
-   * field labels and invariant temperatures as a preview does, rather than flash them.
+   * field labels and points' names as a preview does, rather than flash them.
    */
   alphaMoving: boolean;
 }
@@ -124,7 +128,7 @@ export function computeDiagram(
 export const isPreview = (diagram: Diagram) => diagram.scan.step !== STEP;
 
 /**
- * Whether the field labels and invariant temperatures wait: for a preview, and for any diagram
+ * Whether the field labels and points' names wait: for a preview, and for any diagram
  * while the α mode's knob is moving, so that they do not flash on cached full diagrams.
  */
 export const labelsWait = (state: Readonly<State>) => isPreview(state.diagram) || state.alphaMoving;
@@ -189,6 +193,8 @@ export class Store {
       cut,
       ...alongCut(system.params, diagram, cut),
       showMetastable: true,
+      showFieldLabels: true,
+      showPointLabels: false,
       showLever: false,
       X0: DEFAULT_X0,
       alphaLock: false,
@@ -288,6 +294,17 @@ export class Store {
     if (show !== this.#state.showMetastable) this.#update({ showMetastable: show });
   }
 
+  /**
+   * Steps the Labels button on: field names alone, then with the marked points' names, then
+   * neither, then field names alone again.
+   */
+  cycleLabels(): void {
+    const { showFieldLabels: fields, showPointLabels: points } = this.#state;
+    if (fields && !points) this.#update({ showPointLabels: true });
+    else if (fields) this.#update({ showFieldLabels: false, showPointLabels: false });
+    else this.#update({ showFieldLabels: true, showPointLabels: false });
+  }
+
   /** Shows or hides the lever rule; the α mode has none. */
   setShowLever(show: boolean): void {
     if (show !== this.#state.showLever && this.#state.mode === "dg") {
@@ -303,8 +320,8 @@ export class Store {
    * back if the α mode's system is still the one it started at; otherwise the Δg^M mode takes
    * that system (a preset, with its name and window, where it has a preset's parameters; else
    * named from its values, in the α mode's window), with *auto* unticked and the cut in the
-   * window's middle, and keeps X₀ and the lever rule. The Metastable toggle is the same in both
-   * modes.
+   * window's middle, and keeps X₀ and the lever rule. The Metastable toggle and the Labels button
+   * are the same in both modes.
    */
   setMode(mode: Mode): void {
     if (mode === this.#state.mode) return;
@@ -336,9 +353,16 @@ export class Store {
   #leaveAlpha(): void {
     const kept = this.#kept!;
     this.#kept = null;
-    const { params, window, diagram: shown, showMetastable } = this.#state;
+    const {
+      params,
+      window,
+      diagram: shown,
+      showMetastable,
+      showFieldLabels,
+      showPointLabels,
+    } = this.#state;
     if (sameParams(params, kept.entry)) {
-      this.#update({ ...kept.state, showMetastable });
+      this.#update({ ...kept.state, showMetastable, showFieldLabels, showPointLabels });
       return;
     }
     // At a preset's parameters the Δg^M mode takes the preset, in its own window.
