@@ -84,10 +84,10 @@ header .theme-toggle {
   }
 }
 
-/* Below 366 px of page width (a narrow phone) the logo's line, with the full logo, the two buttons,
-   the mode toggle and the gaps (365.4 px), would squeeze the logo, so it gives way to its ΔG^M
-   mark, as high (56 px wide). */
-@container app (max-width: 22.85rem) {
+/* Below 370 px of page width (a narrow phone) the logo's line, with the full logo, the two buttons,
+   the mode toggle and the gaps (365–367 px, as the mode toggle's width varies with the fonts),
+   would squeeze the logo, so it gives way to its ΔG^M mark, as high (56 px wide). */
+@container app (max-width: 23.1rem) {
   /* By tag too, to win over the rules below that hide the mark. */
   header .logo svg.logo-full {
     display: none;

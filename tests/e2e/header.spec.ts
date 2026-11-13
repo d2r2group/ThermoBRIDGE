@@ -124,8 +124,8 @@ test("the header compacts, and then moves the main row under the logo, as the sc
     [943, false, false, false],
     [713, false, false, false],
     [712, true, false, false],
-    [366, true, false, false],
-    [365, true, false, true],
+    [370, true, false, false],
+    [369, true, false, true],
     [343, true, false, true],
   ] as const;
   // A classic scrollbar narrows the page, not the window, and the header follows the page; 15 px
