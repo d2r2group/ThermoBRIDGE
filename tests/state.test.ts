@@ -15,14 +15,20 @@ describe("Store", () => {
     expect(store.state.diagram.naming.solid).toBe("alphaBeta");
   });
 
-  it("opens on the field names alone, and the Labels button steps to both, to none and back", () => {
+  it("opens on the field names alone, and the Labels button steps one half at a time", () => {
     const store = new Store(preset("h"));
     const steps = [labelsShown(store.state)];
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 4; k++) {
       store.cycleLabels();
       steps.push(labelsShown(store.state));
     }
-    expect(steps).toEqual(["field names", "field names and point names", "none", "field names"]);
+    expect(steps).toEqual([
+      "field names",
+      "field names and point names",
+      "point names",
+      "none",
+      "field names",
+    ]);
   });
 
   it("keeps the labels through the α mode and back", () => {
@@ -30,9 +36,9 @@ describe("Store", () => {
     store.cycleLabels();
     store.setMode("alpha");
     store.cycleLabels();
-    expect(labelsShown(store.state)).toBe("none");
+    expect(labelsShown(store.state)).toBe("point names");
     store.setMode("dg");
-    expect(labelsShown(store.state)).toBe("none");
+    expect(labelsShown(store.state)).toBe("point names");
   });
 
   it("clamps the cut into the window and ignores values that are not numbers", () => {

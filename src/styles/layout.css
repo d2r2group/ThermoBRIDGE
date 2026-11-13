@@ -8,7 +8,7 @@
    their height from the plots' width. Of the window, 72 px goes above the plots (the page's
    padding, the 44 px header and its margin), 94 px to the two plots' top and bottom margins and
    16 px below them, which leaves P = 100svh − 182 px for the two plot areas, each P wide and
-   P / 2 high; the plots are P plus 63 px of side margins wide. Below 42.9rem of page width the
+   P / 2 high; the plots are P plus 63 px of side margins wide. Below 44.3rem of page width the
    header takes two rows, 52 px more, so P = 100svh − 234 px. Narrowing stops at 160 px high plot
    areas, their least height, and widening at 55.5rem. The small viewport (svh) keeps the slice in
    view while the browser's toolbars show.
@@ -42,7 +42,7 @@
 }
 
 /* On the page's width, as the header's switch (header.css). */
-@container app (max-width: 42.9rem) {
+@container app (max-width: 44.3rem) {
   .layout {
     --plots-chrome: 234px;
   }

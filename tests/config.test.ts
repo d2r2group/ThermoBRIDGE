@@ -44,6 +44,21 @@ describe("logo", () => {
       expect(svg, file).not.toContain("currentColor");
     }
   });
+
+  it("has a ΔG^M mark for narrow headers, inline and for the README, cut from the same outlines", () => {
+    const paths = (svg: string) => [...svg.matchAll(/ d="([^"]*)"/g)].map(([, d]) => d);
+    const mark = paths(read("src/assets/logo-narrow.svg"));
+    // Δ, G and M, and none of BRI, "Thermo" or E.
+    expect(mark).toHaveLength(3);
+    const full = paths(read("src/assets/logo.svg"));
+    for (const d of mark) expect(full).toContain(d);
+    for (const file of ["assets/logo-narrow-light.svg", "assets/logo-narrow-dark.svg"]) {
+      const svg = read(file);
+      expect(paths(svg), file).toEqual(mark);
+      expect(svg, file).toContain('aria-label="ThermoBRIDGE"');
+      expect(svg, file).not.toContain("currentColor");
+    }
+  });
 });
 
 describe("CI", () => {

@@ -42,7 +42,7 @@ Details has the key.
   (dashed), the spinodals (dotted) and the curves off the envelope.
 - **Labels**, the split "L+β / ▲" button, steps through the diagram's labels:
   the field names (as it opens), then also each marker's name and temperature
-  (e.g. "Eutectic, 634 K"), then none.
+  (e.g. "Eutectic, 634 K"), then those names alone, then none.
 - **Parameters** edits $\alpha_\mathrm{l}$ and $\alpha_\mathrm{s}$, the
   components ($T_\mathrm{m}$, $\Delta s$), an intermediate compound (a line
   compound or one with a range) and the window (fitted automatically while
@@ -132,10 +132,14 @@ is in [src/physics/](src/physics/) (no dependencies) and the interface in
 [src/ui/modelDetails.ts](src/ui/modelDetails.ts), pre-rendered to SVG with
 MathJax into the committed [src/assets/math.json](src/assets/math.json); a test
 fails while it is out of date. The logo's master is
-[assets/logo-light.svg](assets/logo-light.svg); the dark, inline
-([src/assets/logo.svg](src/assets/logo.svg)) and icon
-([public/favicon.ico](public/favicon.ico)) copies follow it, and a test checks
-that the three SVGs match. [CI](.github/workflows/thermobridge.yml) runs
+[assets/logo-light.svg](assets/logo-light.svg); the dark and inline
+([src/assets/logo.svg](src/assets/logo.svg)) copies follow it, as does its ΔG^M
+mark for narrow phones (inline in
+[src/assets/logo-narrow.svg](src/assets/logo-narrow.svg), and
+[assets/logo-narrow-light.svg](assets/logo-narrow-light.svg) and
+[assets/logo-narrow-dark.svg](assets/logo-narrow-dark.svg)), which is also the
+icon ([public/favicon.ico](public/favicon.ico)); tests check that the SVGs
+match. [CI](.github/workflows/thermobridge.yml) runs
 every check on each push and pull request and deploys `main` to GitHub Pages.
 
 ## Development note

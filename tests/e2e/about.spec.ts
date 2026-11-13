@@ -148,6 +148,13 @@ test("it shows copies of the mode toggle, the α pad, the lock, the sliders and 
   for (const range of await copy(".alpha-compound input[type=range]").all()) {
     expect((await range.boundingBox())!.height).toBeGreaterThan(70);
   }
+  // They stay in the key's column, clear of the text beside it.
+  const sliders = (await copy(".alpha-compound").boundingBox())!;
+  const text = (await dialog(page)
+    .locator("dd")
+    .filter({ hasText: "eleven stops" })
+    .boundingBox())!;
+  expect(sliders.x + sliders.width).toBeLessThanOrEqual(text.x);
   // Inert: the knob's copy is no slider for screen readers.
   await expect(dialog(page).getByRole("slider")).toHaveCount(0);
   await page.keyboard.press("Escape");

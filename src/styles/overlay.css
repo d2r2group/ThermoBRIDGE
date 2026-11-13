@@ -263,6 +263,16 @@ html:has(.overlay[open]) {
   height: 10rem;
 }
 
+/* The compound's three sliders fit the key's column as bare tracks under their names: without the
+   units, the values and the room the values take beside each track. */
+.about-key > .alpha-compound :is(.unit, output) {
+  display: none;
+}
+
+.about-key > .alpha-compound .slider-track {
+  padding-right: 0;
+}
+
 .about-key > .apply,
 .about-key > .file-actions {
   flex: 1;

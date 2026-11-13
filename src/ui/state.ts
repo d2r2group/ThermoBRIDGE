@@ -295,14 +295,15 @@ export class Store {
   }
 
   /**
-   * Steps the Labels button on: field names alone, then with the marked points' names, then
-   * neither, then field names alone again.
+   * Steps the Labels button on, one half at a time: field names alone, then with the marked
+   * points' names, then the points' names alone, then neither, then field names alone again.
    */
   cycleLabels(): void {
     const { showFieldLabels: fields, showPointLabels: points } = this.#state;
     if (fields && !points) this.#update({ showPointLabels: true });
-    else if (fields) this.#update({ showFieldLabels: false, showPointLabels: false });
-    else this.#update({ showFieldLabels: true, showPointLabels: false });
+    else if (fields) this.#update({ showFieldLabels: false });
+    else if (points) this.#update({ showPointLabels: false });
+    else this.#update({ showFieldLabels: true });
   }
 
   /** Shows or hides the lever rule; the α mode has none. */

@@ -136,7 +136,7 @@ export function createLabelsToggle(container: HTMLElement, store: Store): void {
     button.setAttribute("aria-label", `Labels: ${shown}`);
     button.title =
       `Labels on the diagram: ${shown}. Click for field names, then also the points' names ` +
-      "and temperatures, then none";
+      "and temperatures, then those alone, then none";
   };
   sync();
   store.subscribe(sync);

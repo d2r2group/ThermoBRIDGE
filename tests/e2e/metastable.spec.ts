@@ -81,7 +81,11 @@ test("(h) labels its fields, and the Labels button adds the eutectic's name besi
   const halo = 1.5;
   expect(t.x + halo >= marker.x + marker.width || t.x + t.width - halo <= marker.x).toBe(true);
 
-  // Then neither, then the field names alone again.
+  // Then the eutectic's name alone, then neither, then the field names alone again.
+  await button.click();
+  await expect(button).toHaveAccessibleName("Labels: point names");
+  await expect(labels).toHaveCount(0);
+  await expect(pointLabels).toHaveText(["Eutectic, 634 K"]);
   await button.click();
   await expect(button).toHaveAccessibleName("Labels: none");
   await expect(labels).toHaveCount(0);

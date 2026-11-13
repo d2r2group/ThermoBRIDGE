@@ -40,17 +40,13 @@ header .theme-toggle {
   grid-area: theme;
 }
 
-/* Below 944 px of page width the header compacts as pTerrain's does: a 96 px logo, and Lever,
-   Metastable and Share as icons alone. The breakpoint was set for the old 246 px logo, where the
-   full header (with the two header buttons, an 84 px Lever, a 120 px Metastable and a 104 px Share
-   button, and the gaps: 696 px) left the System menu less than 9rem below 840 px; the 145 px logo
-   leaves it 9rem down to 739 px. The mode toggle (92 px and a 12 px gap, §9 phase 16) moved it
-   from 840 px by 104 px. */
+/* Below 944 px of page width the header compacts as pTerrain's does, with Lever, Metastable and
+   Share as icons alone; the logo keeps its full size (138 px wide). The breakpoint was set for the
+   old 246 px logo, where the full header (with the two header buttons, an 84 px Lever, a 120 px
+   Metastable and a 104 px Share button, and the gaps: 696 px) left the System menu less than 9rem
+   below 840 px; the 145 px logo leaves it 9rem down to 739 px. The mode toggle (92 px and a 12 px
+   gap, §9 phase 16) moved it from 840 px by 104 px. */
 @container app (max-width: 58.95rem) {
-  header .logo svg {
-    height: 1.5rem;
-  }
-
   .main-row > .metastable-toggle,
   .main-row .lever-toggle,
   .main-row button.share {
@@ -76,15 +72,28 @@ header .theme-toggle {
   }
 }
 
-/* Below 687 px of page width (set at 583 px for the old 164 px compact logo: the compact header,
-   438 px without the menu, left it less than 9rem; the 96 px one does down to 514 px; then moved
-   by the mode toggle's 104 px) the main row moves under the logo, and the two buttons and the
-   toggle stay on the logo's line. */
-@container app (max-width: 42.9rem) {
+/* Below 709 px of page width the main row moves under the logo, and the two buttons and the toggle
+   stay on the logo's line: the compact header, with the full-size logo, takes 565 px without the
+   menu, which leaves the menu less than 9rem below 709 px. layout.css follows this switch. */
+@container app (max-width: 44.3rem) {
   header {
     grid-template-areas:
       "logo info mode . theme"
       "main main main main main";
+  }
+}
+
+/* Below 366 px of page width (a narrow phone) the logo's line, with the full logo, the two buttons,
+   the mode toggle and the gaps (365.4 px), would squeeze the logo, so it gives way to its ΔG^M
+   mark, as high (56 px wide). */
+@container app (max-width: 22.85rem) {
+  /* By tag too, to win over the rules below that hide the mark. */
+  header .logo svg.logo-full {
+    display: none;
+  }
+
+  header .logo svg.logo-narrow {
+    display: block;
   }
 }
 
@@ -116,8 +125,8 @@ header > .icon-button .icon,
 }
 
 /* The logo (plan §4.3): outlines in the text colour, so it follows the theme, with "ΔG", "Thermo"
-   and the M emblem in the d2r2 purple (through `color`); as high as
-   pTerrain's. */
+   and the M emblem in the d2r2 purple (through `color`); as high as pTerrain's. Its ΔG^M mark,
+   the same height, stands in for it on a narrow phone. */
 .logo {
   margin: 0;
   line-height: 0;
@@ -144,6 +153,10 @@ header > .icon-button .icon,
   width: auto;
   height: 2.25rem;
   max-width: 100%;
+}
+
+.logo .logo-narrow {
+  display: none;
 }
 
 .logo .logo-accent {

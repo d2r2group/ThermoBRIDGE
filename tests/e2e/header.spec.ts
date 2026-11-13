@@ -104,34 +104,47 @@ test("the header compacts, and then moves the main row under the logo, as the sc
     const menu = (await page.locator(".system-menu").boundingBox())!;
     return {
       under: row.y >= logo.y + logo.height,
+      logoHeight: logo.height,
       label: await page.locator(".metastable-toggle .label").isVisible(),
       leverLabel: await page.locator(".lever-toggle .label").isVisible(),
+      full: await page.locator("header .logo-full").isVisible(),
+      mark: await page.locator("header .logo-narrow").isVisible(),
       menu: menu.width,
+      logoWidth: logo.width,
     };
   };
   await open(page);
   // Full, with the Lever and Metastable labels; compact; then the row under the logo, down to a
   // 375 px window, the narrowest phone tested, as in pTerrain. The menu never gets narrower than
-  // about 9rem. The widths are the page's, inside its 16 px padding on either side.
+  // about 9rem. The logo stays whole until its line is too narrow for it, then gives way to its
+  // ΔG^M mark. The widths are the page's, inside its 16 px padding on either side.
   const steps = [
-    [1248, false, true],
-    [944, false, true],
-    [943, false, false],
-    [687, false, false],
-    [686, true, false],
-    [343, true, false],
+    [1248, false, true, false],
+    [944, false, true, false],
+    [943, false, false, false],
+    [709, false, false, false],
+    [708, true, false, false],
+    [366, true, false, false],
+    [365, true, false, true],
+    [343, true, false, true],
   ] as const;
   // A classic scrollbar narrows the page, not the window, and the header follows the page; 15 px
   // more padding on the right stand in for one, as headless Chromium's scrollbars overlay the page.
   for (const scrollbar of [0, 15]) {
     if (scrollbar)
       await page.addStyleTag({ content: `body { padding-right: calc(1rem + ${scrollbar}px) }` });
-    for (const [pageWidth, under, label] of steps) {
+    for (const [pageWidth, under, label, mark] of steps) {
       const width = pageWidth + 32 + scrollbar;
       const got = await layoutAt(width);
       expect(got.under, `${width}`).toBe(under);
       expect(got.label, `${width}`).toBe(label);
       expect(got.leverLabel, `${width}`).toBe(label);
+      expect(got.full, `${width}`).toBe(!mark);
+      expect(got.mark, `${width}`).toBe(mark);
+      // Never squeezed: the full logo keeps its 138 px.
+      if (!mark) expect(got.logoWidth, `${width}`).toBeCloseTo(137.6, 0);
+      // Full size throughout, the compact header included.
+      expect(got.logoHeight, `${width}`).toBeCloseTo(36, 0);
       expect(got.menu, `${width}`).toBeGreaterThanOrEqual(143);
     }
   }
