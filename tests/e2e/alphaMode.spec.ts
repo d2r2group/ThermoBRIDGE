@@ -188,7 +188,7 @@ test("the header keeps the menu at least 9rem wide at the compaction widths in t
   page,
 }) => {
   await alphaRadio(page).check();
-  for (const width of [944, 943, 709, 708, 375]) {
+  for (const width of [944, 943, 713, 712, 375]) {
     await setWidth(page, width + 32);
     const menuBox = (await page.locator(".system-menu").boundingBox())!;
     expect(menuBox.width, `${width}`).toBeGreaterThanOrEqual(143);

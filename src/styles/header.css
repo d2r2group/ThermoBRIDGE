@@ -72,10 +72,11 @@ header .theme-toggle {
   }
 }
 
-/* Below 709 px of page width the main row moves under the logo, and the two buttons and the toggle
-   stay on the logo's line: the compact header, with the full-size logo, takes 565 px without the
-   menu, which leaves the menu less than 9rem below 709 px. layout.css follows this switch. */
-@container app (max-width: 44.3rem) {
+/* From 712 px of page width down the main row moves under the logo, and the two buttons and the
+   toggle stay on the logo's line: the compact header, with the full-size logo, takes 565–567 px
+   without the menu (its labels' width varies with the fonts), which leaves the menu less than 9rem
+   below about 711 px. layout.css follows this switch. */
+@container app (max-width: 44.55rem) {
   header {
     grid-template-areas:
       "logo info mode . theme"

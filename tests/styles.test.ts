@@ -114,10 +114,10 @@ describe("header and layout breakpoints", () => {
     const header = sheet("header.css");
     expect(header).not.toMatch(/@media[^{]*width/);
     expect(header).toContain("@container app (max-width: 58.95rem)");
-    expect(header).toContain("@container app (max-width: 44.3rem)");
+    expect(header).toContain("@container app (max-width: 44.55rem)");
     // The footer's tightening stays a media query; the plots' height fit follows the header.
     expect(sheet("layout.css")).toMatch(
-      /@container app \(max-width: 44\.3rem\) {\s*\.layout {\s*--plots-chrome: 234px;/,
+      /@container app \(max-width: 44\.55rem\) {\s*\.layout {\s*--plots-chrome: 234px;/,
     );
   });
 });
