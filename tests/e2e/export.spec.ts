@@ -26,6 +26,12 @@ async function downloaded(page: Page, act: () => Promise<void>) {
   };
 }
 
+/**
+ * Screenshots taken with animations held at their start: the cut handle's hint ring pulses for
+ * ever, so two screenshots of an unchanged page differ unless both catch it at the same moment.
+ */
+const STILL = { animations: "disabled" } as const;
+
 const text = (entry: ZipRead | undefined) => new TextDecoder().decode(entry!.data);
 const entry = (entries: ZipRead[], name: string) => entries.find((e) => e.name === name);
 
@@ -246,8 +252,8 @@ test("a series saves the three images at each distinct cut, high to low, and lea
   await open(page);
   await leverToggle(page).click();
   const cut = await page.locator(".cut-handle").getAttribute("aria-valuenow");
-  const before = await page.locator(".phase-diagram svg").screenshot();
-  const sliceBefore = await page.locator(".slice-panel svg").screenshot();
+  const before = await page.locator(".phase-diagram svg").screenshot(STILL);
+  const sliceBefore = await page.locator(".slice-panel svg").screenshot(STILL);
   const { name, entries } = await exportFigure(page, "SVG", true);
   expect(name).toBe("Eutectic-series.zip");
   // (h): the liquid, L + β, both two-phase fields, the eutectic at 634 K, and α + β.
@@ -274,9 +280,9 @@ test("a series saves the three images at each distinct cut, high to low, and lea
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(30);
   }
   await expect(page.locator(".cut-handle")).toHaveAttribute("aria-valuenow", cut!);
-  expect(await page.locator(".phase-diagram svg").screenshot()).toEqual(before);
+  expect(await page.locator(".phase-diagram svg").screenshot(STILL)).toEqual(before);
   // With the lever's marker, which the store draws on its own.
-  expect(await page.locator(".slice-panel svg").screenshot()).toEqual(sliceBefore);
+  expect(await page.locator(".slice-panel svg").screenshot(STILL)).toEqual(sliceBefore);
 });
 
 test("in the α mode a series runs through the Δg^M mode's view", async ({ page }) => {
@@ -309,7 +315,7 @@ test("Figure saves PNG images at 3× the SVG's size", async ({ page }) => {
 test("the images are light when the page is dark, and the page stays dark", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
-  const before = await page.locator(".phase-diagram svg").screenshot();
+  const before = await page.locator(".phase-diagram svg").screenshot(STILL);
   const { entries } = await exportFigure(page, "SVG");
   const svg = text(entries[0]);
   // The light --fg and --bg, and none of the dark ones.
@@ -317,7 +323,7 @@ test("the images are light when the page is dark, and the page stays dark", asyn
   expect(svg).not.toContain("rgb(17, 17, 17)");
   expect(svg).not.toContain("rgb(242, 242, 242)");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  expect(await page.locator(".phase-diagram svg").screenshot()).toEqual(before);
+  expect(await page.locator(".phase-diagram svg").screenshot(STILL)).toEqual(before);
 });
 
 test("in the α mode the export shows the system as the Δg^M mode would", async ({ page }) => {
