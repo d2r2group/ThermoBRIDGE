@@ -6,6 +6,7 @@ import {
   expect,
   field,
   menu,
+  plotArea,
   setCut,
   slicePanel,
   test,
@@ -116,8 +117,38 @@ test("c1 from the menu: the line, its name beside it, and its point in the slice
   await expect(diagram(page).locator(".bold-value text").nth(1)).toHaveText("0.500");
   await expect(slicePanel(page).locator(".guides line.guide.stable")).toHaveCount(3);
   await expect(slicePanel(page).locator(".markers circle.touch-marker.stable")).toHaveCount(3);
+  // In the band along the bottom edge, a run in its curve colour widened about its point to 1.6 %
+  // of the plot area's width.
+  const run = slicePanel(page).locator('.stable-band rect[data-kind="C"]');
+  await expect(run).toHaveCSS("fill", "rgb(202, 124, 89)");
+  const box = (await run.boundingBox())!;
+  expect(box.width).toBeCloseTo(0.016 * (await plotArea(slicePanel(page))).width, 1);
+  const lineBox = (await line.boundingBox())!;
+  expect(box.x + box.width / 2).toBeCloseTo(lineBox.x + lineBox.width / 2, 0);
+  // Its point, the envelope's lowest, keeps at least 36 px above the bottom edge, clear of the
+  // band and its name.
+  const plot = await plotArea(slicePanel(page));
+  const markerBox = (await marker.boundingBox())!;
+  expect(plot.y + plot.height - (markerBox.y + markerBox.height / 2)).toBeGreaterThanOrEqual(35.5);
+  // Named over it, as on the diagram.
+  const name = slicePanel(page).locator('.band-label[data-phase="C"]');
+  await expect(name).toHaveText("AB");
+  await expect(name).toHaveCSS("fill", "rgb(202, 124, 89)");
+  const nameBox = (await name.boundingBox())!;
+  expect(nameBox.x + nameBox.width / 2).toBeCloseTo(box.x + box.width / 2, 0);
+  // Shaded as wide, from its point down to the bottom edge.
+  const shade = slicePanel(page).locator('.shade[data-kind="C"]');
+  await expect(shade).toHaveCSS("fill", "rgb(242, 160, 123)");
+  const shadeBox = (await shade.boundingBox())!;
+  expect(shadeBox.x).toBeCloseTo(box.x, 1);
+  expect(shadeBox.width).toBeCloseTo(box.width, 1);
+  expect(shadeBox.y + shadeBox.height).toBeCloseTo(box.y + box.height, 0);
+  expect(Number(await shade.getAttribute("y"))).toBeCloseTo(end, 6);
   // Above its melting point, dashed, and hidden with the metastable branches.
   await setCut(page, 1100);
+  await expect(run).toHaveCount(0);
+  await expect(shade).toHaveCount(0);
+  await expect(name).toHaveCount(0);
   await expect(line).toHaveClass(/metastable/);
   await expect(line).toHaveCSS("stroke-dasharray", "6px, 4px");
   // With a small open circle at its end.

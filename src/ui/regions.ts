@@ -5,7 +5,7 @@
 // for it; its boundary draws the line. The bitmap reruns when the system, the window or the plot
 // size change, not while the cut moves; its row hulls serve the field labels too.
 
-import { COMPOUND, LIQUID, type Params } from "../physics/gibbs";
+import { COMPOUND, LIQUID, type Params, type PhaseId } from "../physics/gibbs";
 import type { PlotWindow } from "../physics/plotWindow";
 import { HullError, sliceHull, type Field, type Hull } from "../physics/hull";
 import type { Diagram } from "./state";
@@ -24,17 +24,28 @@ export const MAX_DPR = 2;
 
 /** The kind of a field of the hull. */
 export function fieldKind(f: Field): RegionKind {
-  if (f.kind === "single") {
-    if (f.phase === COMPOUND) return "C";
-    return f.phase === LIQUID ? "L" : "S";
+  return f.kind === "single"
+    ? phasesKind([f.phase])
+    : phasesKind([f.ends[0].phase, f.ends[1].phase]);
+}
+
+/**
+ * The kind of a field by its phases: one for a one-phase field, a tie line's two for a two-phase
+ * one (the figure export's field areas, plan §9 phase 21, carry phases, not kinds).
+ */
+export function phasesKind(phases: readonly [PhaseId] | readonly [PhaseId, PhaseId]): RegionKind {
+  if (phases.length === 1) {
+    const [phase] = phases;
+    if (phase === COMPOUND) return "C";
+    return phase === LIQUID ? "L" : "S";
   }
-  const [p, q] = f.ends;
-  if (p.phase === COMPOUND || q.phase === COMPOUND) {
-    const other = p.phase === COMPOUND ? q.phase : p.phase;
+  const [p, q] = phases;
+  if (p === COMPOUND || q === COMPOUND) {
+    const other = p === COMPOUND ? q : p;
     return other === LIQUID ? "L+C" : "S+C";
   }
-  if (p.phase !== q.phase) return "L+S";
-  return p.phase === LIQUID ? "L+L" : "S+S";
+  if (p !== q) return "L+S";
+  return p === LIQUID ? "L+L" : "S+S";
 }
 
 /** The plot-area pixel row r of `rows` at its centre's temperature. */

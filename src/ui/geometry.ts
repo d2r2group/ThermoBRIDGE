@@ -85,6 +85,14 @@ export const CUT_MAGNET_PX = 2;
 /** The touching points' marker radius, CSS px (the event markers' sizes are in eventMarkers.ts). */
 export const MARKER_R = 3.5;
 
+/**
+ * An axis as a figure export draws it (plan §9 phase 21): with no offset, where d3 shifts it by
+ * 0.5 px on a 1× screen and not on a finer one, so that an export is the same on any screen.
+ */
+export function fixedOffset<A extends { offset(offset: number): A }>(axis: A, fixed: boolean): A {
+  return fixed ? axis.offset(0) : axis;
+}
+
 /** About one T or g tick per this many CSS px of plot height. */
 export const TICK_SPACING = 50;
 /** The baseline of the diagram's X-axis label and component names above the SVG's bottom, px. */

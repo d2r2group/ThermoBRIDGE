@@ -1,12 +1,15 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "@playwright/test";
+import type { Browser, Page } from "@playwright/test";
+import { scan } from "../../src/physics/events";
+import { preset } from "../../src/physics/presets";
 import { unzip, type ZipRead } from "../zipReader";
 import { expect, leverToggle, test } from "./fixtures";
 
-// The TDB and figure exports (plan §9 phase 20): the row above the Parameters panel, the ZIP each
-// export downloads, the images' contents and sizes, the light theme, and the α mode, which
-// exports its system as the Δg^M mode would show it.
+// The TDB and figure exports (plan §9 phases 20–21): the row above the Parameters panel, the ZIP
+// each export downloads, the images' contents and sizes, the light theme, the α mode, which
+// exports its system as the Δg^M mode would show it, the vector fields, the fixed plot sizes and
+// the PNG's DPI.
 
 const tdbButton = (page: Page) => page.getByRole("button", { name: "TDB" });
 const figureButton = (page: Page) => page.getByRole("button", { name: "Figure" });
@@ -32,6 +35,12 @@ async function downloaded(page: Page, act: () => Promise<void>) {
  */
 const STILL = { animations: "disabled" } as const;
 
+/**
+ * The most the whole figure's SVG may hold at (h) and c6 at 720 × 360, characters: the first run
+ * (November 2026) gave 115 K and 221 K, the field paths about 3 K of each.
+ */
+const BOUND = 300_000;
+
 const text = (entry: ZipRead | undefined) => new TextDecoder().decode(entry!.data);
 const entry = (entries: ZipRead[], name: string) => entries.find((e) => e.name === name);
 
@@ -40,10 +49,23 @@ async function exportTdb(page: Page) {
   return { name, entries: unzip(bytes) };
 }
 
-async function exportFigure(page: Page, format: "SVG" | "PNG", series = false) {
+/** What the Figure menu offers for the plot size and the DPI, as its items read. */
+type SizeText = "360 × 180" | "540 × 270" | "720 × 360";
+type DpiText = "150 DPI" | "300 DPI" | "600 DPI";
+
+/** Exports the figure at all unique cuts for `series`, else the current cut, and at `size` and `dpi` when given. */
+async function exportFigure(
+  page: Page,
+  format: "SVG" | "PNG",
+  series = false,
+  { size, dpi }: { size?: SizeText; dpi?: DpiText } = {},
+) {
   await figureButton(page).click();
-  const box = page.getByRole("menuitemcheckbox", { name: "Series of cuts" });
-  if ((await box.getAttribute("aria-checked")) !== String(series)) await box.click();
+  await page
+    .getByRole("menuitemradio", { name: series ? "All unique cuts" : "Current cut" })
+    .click();
+  if (size) await page.getByRole("menuitemradio", { name: size }).click();
+  if (dpi) await page.getByRole("menuitemradio", { name: dpi }).click();
   const { name, bytes } = await downloaded(page, () =>
     page.getByRole("menuitem", { name: format }).click(),
   );
@@ -90,7 +112,19 @@ async function measure(page: Page, svgText: string) {
     const guides = [...svg.querySelectorAll("line")].filter((l) =>
       /stroke-dasharray:\s*0(px)?,?\s+4(px)?/.test(l.getAttribute("style") ?? ""),
     ).length;
+    // The plot area: the diagram's frame (top and right edges) or the slice panel's (bottom and
+    // right).
+    const frame = [...svg.querySelectorAll("path")]
+      .map((p) =>
+        /^M0,(?:0H([\d.]+)V([\d.]+)|([\d.]+)H([\d.]+)V0)$/.exec(p.getAttribute("d") ?? ""),
+      )
+      .find((m) => m);
     const result = {
+      plot: frame
+        ? frame[1]
+          ? { width: Number(frame[1]), height: Number(frame[2]) }
+          : { width: Number(frame[4]), height: Number(frame[3]) }
+        : null,
       width: box.width,
       height: box.height,
       outside,
@@ -110,6 +144,29 @@ function pngSize(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset);
   expect([...bytes.subarray(1, 4)]).toEqual([0x50, 0x4e, 0x47]);
   return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
+/** A PNG's pHYs chunks, each as its pixels per unit across and down and its unit. */
+function pngPhys(bytes: Uint8Array) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset);
+  const out: { x: number; y: number; unit: number }[] = [];
+  for (let at = 8; at < bytes.length;) {
+    const length = view.getUint32(at);
+    const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8));
+    if (type === "pHYs") {
+      out.push({ x: view.getUint32(at + 8), y: view.getUint32(at + 12), unit: bytes[at + 16]! });
+    }
+    at += 12 + length;
+  }
+  return out;
+}
+
+/** An SVG file's width and height attributes. */
+function svgSize(source: string) {
+  return {
+    width: Number(/<svg[^>]* width="(\d+)"/.exec(source)![1]),
+    height: Number(/<svg[^>]* height="(\d+)"/.exec(source)![1]),
+  };
 }
 
 test("the row sits above the Parameters panel and works with the panel closed", async ({
@@ -203,10 +260,8 @@ test("Figure saves three SVG images and the JSON file, each standing alone", asy
     expect(w.guides).toBeGreaterThan(0);
     expect(d.guides).toBe(0);
     expect(s.guides).toBe(0);
-    // The region raster under the diagram.
-    expect(w.images).toBe(1);
-    expect(d.images).toBe(1);
-    expect(s.images).toBe(0);
+    // The fields are paths, not an image.
+    expect(w.images + d.images + s.images).toBe(0);
     // The diagram alone has its tick numbers; the slice panel's axis is under its band.
     expect(d.tickTop).not.toBeNull();
     expect(s.tickTop).toBeGreaterThan(s.bandBottom!);
@@ -295,23 +350,99 @@ test("in the α mode a series runs through the Δg^M mode's view", async ({ page
   await expect(page.locator(".slice-panel svg")).toBeHidden();
 });
 
-test("Figure saves PNG images at 3× the SVG's size", async ({ page }) => {
+test("Figure saves PNG images at the DPI chosen, 300 at first, recorded in pHYs", async ({
+  page,
+}) => {
   await open(page);
   const svg = await exportFigure(page, "SVG");
-  const png = await exportFigure(page, "PNG");
-  expect(png.entries.map((e) => e.name)).toEqual([
-    "Eutectic.png",
-    "Eutectic-diagram.png",
-    "Eutectic-slice.png",
-    "Eutectic.json",
-  ]);
-  for (let k = 0; k < 3; k++) {
-    const width = Number(/<svg[^>]* width="(\d+)"/.exec(text(svg.entries[k]))![1]);
-    const height = Number(/<svg[^>]* height="(\d+)"/.exec(text(svg.entries[k]))![1]);
-    expect(pngSize(png.entries[k]!.data)).toEqual({ width: 3 * width, height: 3 * height });
+  for (const [dpi, choice] of [
+    [300, undefined],
+    [150, "150 DPI"],
+    [600, "600 DPI"],
+  ] as const) {
+    // 600 DPI at the default 720 × 360 is too large; the smaller sizes fit at 600.
+    const size = dpi === 600 ? "540 × 270" : undefined;
+    const ref = size ? await exportFigure(page, "SVG", false, { size }) : svg;
+    const png = await exportFigure(page, "PNG", false, { dpi: choice, size });
+    expect(png.entries.map((e) => e.name)).toEqual([
+      "Eutectic.png",
+      "Eutectic-diagram.png",
+      "Eutectic-slice.png",
+      "Eutectic.json",
+    ]);
+    for (let k = 0; k < 3; k++) {
+      const { width, height } = svgSize(text(ref.entries[k]));
+      expect(pngSize(png.entries[k]!.data)).toEqual({
+        width: Math.round((width * dpi) / 96),
+        height: Math.round((height * dpi) / 96),
+      });
+      const ppm = Math.round(dpi / 0.0254);
+      expect(pngPhys(png.entries[k]!.data)).toEqual([{ x: ppm, y: ppm, unit: 1 }]);
+    }
+    if (dpi === 300) expect(pngPhys(png.entries[0]!.data)[0]!.x).toBe(11811);
   }
+  await expect(page.locator(".figure-note")).toBeEmpty();
 });
 
+test("a DPI too large for the figure is lowered for every image, and a note says so", async ({
+  page,
+}) => {
+  await open(page);
+  const svg = await exportFigure(page, "SVG", false, { size: "720 × 360" });
+  const sizes = svg.entries.slice(0, 3).map((e) => svgSize(text(e)));
+  const largest = sizes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a));
+  const pixels = (d: number) =>
+    Math.round((largest.width * d) / 96) * Math.round((largest.height * d) / 96);
+  // If 600 DPI fits at 720 × 360, this test needs a lower limit than the app's.
+  expect(pixels(600)).toBeGreaterThan(16_777_216);
+  let dpi = 600;
+  while (pixels(dpi) > 16_777_216) dpi--;
+
+  const png = await exportFigure(page, "PNG", false, { size: "720 × 360", dpi: "600 DPI" });
+  for (let k = 0; k < 3; k++) {
+    const { width, height } = sizes[k]!;
+    expect(pngSize(png.entries[k]!.data)).toEqual({
+      width: Math.round((width * dpi) / 96),
+      height: Math.round((height * dpi) / 96),
+    });
+    const ppm = Math.round(dpi / 0.0254);
+    expect(pngPhys(png.entries[k]!.data)).toEqual([{ x: ppm, y: ppm, unit: 1 }]);
+  }
+  const note = page.locator(".figure-note");
+  await expect(note).toHaveAttribute("role", "status");
+  await expect(note).toBeVisible();
+  await expect(note).toHaveText(
+    `Saved at ${dpi} DPI: 600 DPI is more than this browser can draw for a figure this size.`,
+  );
+  await expect(figureButton(page)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(note).toBeHidden();
+  await expect(note).toBeEmpty();
+});
+
+test("the fields are vector paths in the diagram's images, with their patterns", async ({
+  page,
+}) => {
+  for (const hash of ["", "#c6"]) {
+    await open(page, hash);
+    const { entries } = await exportFigure(page, "SVG");
+    const [whole, diagram, slice] = entries.slice(0, 3).map(text) as [string, string, string];
+    for (const svg of [whole, diagram, slice]) {
+      expect(svg).not.toContain("<image");
+      expect(svg).not.toContain("data:image");
+      expect(svg).not.toContain("var(--");
+      // Every pattern or clip a fill or clip-path names is in the file.
+      for (const [, id] of svg.matchAll(/url\(#([^)]+)\)/g)) {
+        expect(svg, `#${id}`).toContain(`id="${id}"`);
+      }
+    }
+    expect(whole).toContain("url(#field-");
+    expect(diagram).toContain("url(#field-");
+    expect(slice).not.toContain("field-");
+    // The fields are a few KB, where the raster was up to a few hundred.
+    expect(whole.length, "the whole figure's size").toBeLessThan(BOUND);
+  }
+});
 test("the images are light when the page is dark, and the page stays dark", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
@@ -374,17 +505,31 @@ test("the Figure menu opens from the keyboard and closes on Escape; axe finds no
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menu", { name: "Figure format" })).toBeVisible();
   await expect(figureButton(page)).toHaveAttribute("aria-expanded", "true");
-  const series = page.getByRole("menuitemcheckbox", { name: "Series of cuts" });
-  await expect(series).toBeFocused();
-  await expect(series).toHaveAttribute("aria-checked", "false");
-  // Ticking the box leaves the menu open.
+  const all = page.getByRole("menuitemradio", { name: "All unique cuts" });
+  const current = page.getByRole("menuitemradio", { name: "Current cut" });
+  await expect(all).toBeFocused();
+  await expect(all).toHaveAttribute("aria-checked", "false");
+  await expect(current).toHaveAttribute("aria-checked", "true");
+  // Choosing all unique cuts leaves the menu open, and unchecks the current cut.
   await page.keyboard.press("Enter");
-  await expect(series).toHaveAttribute("aria-checked", "true");
+  await expect(all).toHaveAttribute("aria-checked", "true");
+  await expect(current).toHaveAttribute("aria-checked", "false");
   await expect(page.getByRole("menu")).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await expect(current).toBeFocused();
+  // Then the three plot sizes, the three DPIs, SVG and PNG.
+  for (const name of ["360 × 180", "540 × 270", "720 × 360", "150 DPI", "300 DPI", "600 DPI"]) {
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("menuitemradio", { name })).toBeFocused();
+  }
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "SVG" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "PNG" })).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("menuitem", { name: "PNG" })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(all).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toBeHidden();
@@ -411,4 +556,222 @@ test.describe("on a phone", () => {
     const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scroll).toBeLessThanOrEqual(390);
   });
+});
+
+test("the plot size and the DPI are each one choice, kept while the page is open", async ({
+  page,
+}) => {
+  await open(page);
+  await figureButton(page).click();
+  const menu = page.getByRole("menu", { name: "Figure format" });
+  const checked = (group: string) =>
+    menu
+      .getByRole("group", { name: group })
+      .locator('[role="menuitemradio"][aria-checked="true"]')
+      .allTextContents();
+  expect(await checked("Plot size")).toEqual(["720 × 360"]);
+  expect(await checked("PNG resolution")).toEqual(["300 DPI"]);
+  await page.getByRole("menuitemradio", { name: "360 × 180" }).click();
+  await page.getByRole("menuitemradio", { name: "600 DPI" }).click();
+  await expect(menu).toBeVisible();
+  expect(await checked("Plot size")).toEqual(["360 × 180"]);
+  expect(await checked("PNG resolution")).toEqual(["600 DPI"]);
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await figureButton(page).click();
+  expect(await checked("Plot size")).toEqual(["360 × 180"]);
+  expect(await checked("PNG resolution")).toEqual(["600 DPI"]);
+  await expect(page.getByRole("menuitem", { name: "PNG" })).toHaveAttribute(
+    "title",
+    "Images at the size and resolution chosen above",
+  );
+});
+
+test("each image's plot area is the size chosen, with its labels inside the viewBox", async ({
+  page,
+}) => {
+  await open(page);
+  for (const [size, width, height] of [
+    ["360 × 180", 360, 180],
+    ["540 × 270", 540, 270],
+    ["720 × 360", 720, 360],
+  ] as const) {
+    const { entries } = await exportFigure(page, "SVG", false, { size });
+    for (const entry of entries.slice(0, 3)) {
+      const m = await measure(page, text(entry));
+      expect(m.plot, entry.name).toEqual({ width, height });
+      expect(m.outside, `${entry.name} at ${size}`).toEqual([]);
+    }
+  }
+});
+
+test("a series exports every cut at the size chosen", async ({ page }) => {
+  await open(page);
+  const { entries } = await exportFigure(page, "SVG", true, { size: "540 × 270" });
+  const images = entries.filter((e) => e.name.endsWith(".svg"));
+  expect(images).toHaveLength(15);
+  for (const entry of images) {
+    expect((await measure(page, text(entry))).plot, entry.name).toEqual({
+      width: 540,
+      height: 270,
+    });
+  }
+});
+
+test("an export at another size leaves the page's plots as they were", async ({ page }) => {
+  await open(page);
+  await leverToggle(page).click();
+  const sizes = () =>
+    page.evaluate(() => {
+      const attrs = (sel: string) => {
+        const el = document.querySelector(sel)!;
+        return [el.getAttribute("width"), el.getAttribute("height")];
+      };
+      const canvas = document.querySelector<HTMLCanvasElement>(".phase-diagram canvas")!;
+      return {
+        diagram: attrs(".phase-diagram svg"),
+        slice: attrs(".slice-panel svg"),
+        canvas: [canvas.width, canvas.height, canvas.style.width, canvas.style.height],
+      };
+    });
+  const before = await sizes();
+  const cut = await page.locator(".cut-handle").getAttribute("aria-valuenow");
+  const knob = await page.locator(".lever-knob").boundingBox();
+  const shot = await page.locator(".phase-diagram svg").screenshot(STILL);
+  await exportFigure(page, "SVG", false, { size: "360 × 180" });
+  expect(await sizes()).toEqual(before);
+  await expect(page.locator(".cut-handle")).toHaveAttribute("aria-valuenow", cut!);
+  expect(await page.locator(".lever-knob").boundingBox()).toEqual(knob);
+  expect(await page.locator(".phase-diagram svg").screenshot(STILL)).toEqual(shot);
+});
+
+/** The SVG files of one export from a fresh page in a context with `options`. */
+async function exportIn(
+  browser: Browser,
+  options: Parameters<Browser["newContext"]>[0],
+  size: SizeText,
+  date: number,
+) {
+  const context = await browser.newContext({ ...options, acceptDownloads: true });
+  try {
+    const page = await context.newPage();
+    // One date in both contexts, for the comment.
+    await page.clock.setFixedTime(date);
+    await open(page, "#c1");
+    const { entries } = await exportFigure(page, "SVG", false, { size });
+    return entries.slice(0, 3).map(text);
+  } finally {
+    await context.close();
+  }
+}
+
+test("an export is the same from a phone at 3× and a laptop at 1×", async ({ browser }) => {
+  test.slow();
+  const date = Date.now();
+  for (const size of ["360 × 180", "540 × 270", "720 × 360"] as const) {
+    const phone = await exportIn(
+      browser,
+      {
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+      size,
+      date,
+    );
+    const laptop = await exportIn(
+      browser,
+      { viewport: { width: 1280, height: 960 }, deviceScaleFactor: 1 },
+      size,
+      date,
+    );
+    for (let k = 0; k < 3; k++) expect(phone[k], `image ${k} at ${size}`).toBe(laptop[k]);
+  }
+});
+
+/**
+ * The lightest pixel along the row at T, for X in [X0, X1], against the field just above and
+ * below it, when `svg` (a diagram alone) is drawn at `scale`: how much lighter, in 0–255 grey.
+ */
+async function seam(
+  page: Page,
+  svg: string,
+  window: { Tmin: number; Tmax: number },
+  T: number,
+  [X0, X1]: [number, number],
+  scale: number,
+) {
+  return page.evaluate(
+    async ({ svg, window, T, X0, X1, scale, margin, plot }) => {
+      const [vx, vy, vw, vh] = /viewBox="([^"]+)"/.exec(svg)![1]!.split(" ").map(Number) as [
+        number,
+        number,
+        number,
+        number,
+      ];
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const grey = (x: number, y: number) => {
+        const k = 4 * (Math.round(y) * canvas.width + Math.round(x));
+        return (data[k]! + data[k + 1]! + data[k + 2]!) / 3;
+      };
+      const px = (X: number) => (margin.left - vx + X * plot.width) * scale;
+      const y =
+        (margin.top - vy + ((window.Tmax - T) / (window.Tmax - window.Tmin)) * plot.height) * scale;
+      let worst = -Infinity;
+      for (let x = Math.ceil(px(X0)); x <= px(X1); x++) {
+        // The field beside the row, away from any seam: the darker of the two sides (one side
+        // may be a lighter checker cell).
+        const beside = Math.min(grey(x, y - 4 * scale), grey(x, y + 4 * scale));
+        for (let dy = -scale; dy <= scale; dy++) worst = Math.max(worst, grey(x, y + dy) - beside);
+      }
+      return worst;
+    },
+    {
+      svg,
+      window,
+      T,
+      X0,
+      X1,
+      scale,
+      margin: { top: 12, left: 50 },
+      plot: { width: 720, height: 360 },
+    },
+  );
+}
+
+test("two fields of one kind that meet show no seam, at 1× and 3×", async ({ page }) => {
+  const labels = page.locator(".labels-toggle");
+  const cases = [
+    // The α field below and above (h)'s eutectic, left of its line.
+    { id: "h", kind: "eutectic", X: [0.02, 0.07] },
+    // The liquid below and above 1804 K, where k's liquid dome closes, beside the dome: its top
+    // is flat, so its boundary runs within a few px of the row from about X = 0.35 to 0.65.
+    { id: "k", kind: "critical", X: [0.05, 0.25] },
+  ] as const;
+  for (const { id, kind, X } of cases) {
+    const { params, window } = preset(id);
+    const T = scan(params, window)
+      .events.filter((e) => e.kind === kind)
+      .at(-1)!.T;
+    await open(page, `#${id};T,1000`);
+    while ((await labels.getAttribute("aria-label")) !== "Labels: none") await labels.click();
+    const { entries } = await exportFigure(page, "SVG");
+    for (const scale of [1, 3]) {
+      const lighter = await seam(page, text(entries[1]), window, T, [...X], scale);
+      expect(lighter, `${id} at ${scale}×`).toBeLessThanOrEqual(3);
+    }
+  }
 });

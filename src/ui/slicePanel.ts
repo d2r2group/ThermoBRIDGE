@@ -2,20 +2,25 @@
 // ui/slicePanel.ts: g_l and g_s (and a compound γ with a range) at T* minus the reference r (§2)
 // on the diagram's X scale, solid on the stable envelope and dashed off it, a line compound as a
 // vertical line down to its point (solid on the envelope, dashed above it with an open circle at
-// its end), each stable common
-// tangent with markers on its
-// touching points (one where two tangents share it), the shading under the envelope in the
-// diagram's field fills, a band of the one-phase fields' stable phase along the bottom edge (as in
-// pTerrain), a dotted guide line from each touching point up to the diagram, and the g axis
-// fitted to T*. On an invariant its three touching points carry its event marker and the shading
-// under its tangent is hatched in the marker's colour. With the
-// metastable branches: the dashed curves, the dashed, lighter tangents of the diagram's
-// metastable extensions with their markers and guides, and the spinodal points. With the lever
-// rule on, a dotted line at X₀ down to the mixture's g on the envelope, with a marker there.
+// its end), each stable common tangent with markers on its touching points (one where two
+// tangents share it), the shading under the envelope in the diagram's field fills, a band of the
+// one-phase fields' stable phase along the bottom edge (as in pTerrain; a stable line
+// compound's, and its shading, widened about its point) with the fields' names over it while the
+// Labels button shows them, a dotted guide line from each touching point up to the diagram, and
+// the g axis fitted to T* with its lowest point clear of the band. On an invariant its three
+// touching points carry its event marker and the shading under its tangent is hatched in the
+// marker's colour. With the metastable branches: the dashed curves, the dashed, lighter tangents
+// of the diagram's metastable extensions with their markers and guides, and the spinodal points.
+// With the lever rule on, a dotted line at X₀ down to the mixture's g on the envelope, with a
+// marker there.
 
 import { area, axisLeft, axisTop, line, scaleLinear, select, type Selection } from "d3";
 import { invariantAt } from "../physics/cut";
+import { nameField } from "../physics/fields";
+import { COMPOUND } from "../physics/gibbs";
+import type { Field } from "../physics/hull";
 import {
+  clearBelow,
   compoundPointAt,
   distinctTouches,
   gDomain,
@@ -32,6 +37,8 @@ import {
 } from "../physics/slice";
 import { spinodalPointsAt } from "../physics/spinodal";
 import { AXIS_LABELS, setAxisLabel } from "./axisLabels";
+import { placeBandLabels, type BandLabel } from "./bandLabels";
+import { setSvgName } from "./compoundText";
 import {
   INVARIANT_FAMILIES,
   invariantTouches,
@@ -40,8 +47,10 @@ import {
 } from "./diagram/eventMarkers";
 import { formatTemperature } from "./format";
 import {
+  fixedOffset,
   frameBottomRight,
   MARKER_R,
+  measureText,
   SLICE_MARGIN,
   TICK_SPACING,
   xOf,
@@ -51,10 +60,17 @@ import {
 import { leverOf } from "./leverText";
 import { joinGuides, joinMarkers } from "./marks";
 import { attachPanel, fitSvg, placeYLabel } from "./panel";
-import { CHECKER_CELL, DIAMOND_KINDS, fieldKind, KIND_COLOURS, TWO_PHASE_KINDS } from "./regions";
+import {
+  CHECKER_CELL,
+  DIAMOND_KINDS,
+  fieldKind,
+  KIND_COLOURS,
+  TWO_PHASE_KINDS,
+  type RegionKind,
+} from "./regions";
 import { RESIZE_MS, throttle } from "./schedule";
 import type { PlotHandle } from "./diagram/phaseDiagram";
-import type { State, Store } from "./state";
+import { labelsWait, type State, type Store } from "./state";
 
 const MARGIN = SLICE_MARGIN;
 
@@ -62,12 +78,41 @@ const MARGIN = SLICE_MARGIN;
 const BAND_PX = 4;
 
 /**
+ * Width of a stable line compound's band run and shading as a fraction of the plot area's width,
+ * widened from its point to show (about 12 px at the panel's usual 780 px).
+ */
+const COMPOUND_WIDTH = 0.016;
+
+/** A run of the band along the bottom edge: a one-phase field over [x0, x1], px. */
+interface BandRun {
+  kind: RegionKind;
+  /** Its phase and name, as the diagram names it. */
+  phase: string;
+  name: string;
+  x0: number;
+  x1: number;
+  /** A line compound's run, widened from its point. */
+  point: boolean;
+}
+
+/**
+ * How far the envelope's lowest point keeps above the bottom edge, px: clear of the band, the
+ * fields' names and a marker there; at most this share of the panel's height.
+ */
+const MIN_CLEARANCE = { px: 36, share: 0.4 } as const;
+
+/** The names' baseline above the band, px, and their width per character before layout. */
+const LABEL_LIFT = 3;
+const LABEL_PX_PER_CHAR = 7;
+
+/**
  * Appends to `defs` one checkerboard pattern per two-phase kind, ids `${prefix}-${kind}`, matching
  * the diagram's bitmap (regions.ts `paintRegions`, `checkerColour`): cells of CHECKER_CELL px in
  * the kind's two colours from the plot area's origin, turned 45° for a diamond kind. The colours
- * are opaque here; the shade carries the region opacity.
+ * are opaque here; the shade carries the region opacity. The figure export's field paths use them
+ * too (plan §9 phase 21).
  */
-function appendCheckerPatterns(
+export function appendCheckerPatterns(
   defs: Selection<SVGDefsElement, unknown, null, undefined>,
   prefix: string,
 ): void {
@@ -135,11 +180,17 @@ export interface SliceHandle extends PlotHandle {
   drawn(): Readonly<State>;
 }
 
+/**
+ * Slice panels built so far: each one's ids carry its number, unique in the page and the same on
+ * every device, so that a figure export's SVG text is too (plan §9 phase 21).
+ */
+let panelCount = 0;
+
 /** Builds the slice panel inside `container` and keeps it in sync with `store`. */
 export function createSlicePanel(container: HTMLElement, store: Store): SliceHandle {
   const root = select(container).classed("slice-panel", true);
   const svg = root.append("svg").attr("role", "img");
-  const uid = Math.random().toString(36).slice(2);
+  const uid = String(++panelCount);
   const defs = svg.append("defs");
   const clipRect = defs.append("clipPath").attr("id", `slice-clip-${uid}`).append("rect");
   appendCheckerPatterns(defs, `checker-${uid}`);
@@ -147,6 +198,8 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
   const plot = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
   const clipped = plot.append("g").attr("clip-path", `url(#slice-clip-${uid})`);
   const shading = clipped.append("g").attr("class", "shading");
+  // A stable line compound's field, a point: a strip as wide as its band run from it down.
+  const compoundShade = clipped.append("g").attr("class", "shading compound-shading");
   // Along the bottom edge, the stable phase's curve colour over each one-phase run, also where
   // the envelope is off the panel; nothing under a tangent.
   const band = clipped.append("g").attr("class", "stable-band");
@@ -167,6 +220,8 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
     .append("g")
     .attr("class", "compound-line-layer")
     .attr("clip-path", `url(#slice-clip-${uid})`);
+  // Each one-phase field's name over its run of the band, while the Labels button shows them.
+  const bandLabels = plot.append("g").attr("class", "band-labels");
   const markers = plot.append("g").attr("class", "markers");
   const lever = plot.append("g").attr("class", "lever");
   const leverGuide = lever.append("line").attr("class", "guide lever");
@@ -181,7 +236,11 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
   const yLabel = axes.append<SVGTextElement>("text").attr("class", "axis-label y-label");
   setAxisLabel(yLabel.node() as SVGTextElement, AXIS_LABELS.G);
 
-  let size: PlotSize = { width: 0, height: 0 };
+  /** The plot size the container last gave, and the one the panel last drew at. */
+  let observed: PlotSize = { width: 0, height: 0 };
+  let size: PlotSize = observed;
+  /** Whether the last draw was a figure export's, which fixes the axes' offset. */
+  let exporting = false;
   let xs: number[] = [];
   let y = scaleLinear();
   let drawn: Readonly<State> = store.state;
@@ -198,14 +257,51 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
     leverMarker.attr("cx", x).attr("cy", gy);
   };
 
+  /**
+   * The one-phase fields' names over their runs of the band, measured in place; held back with the
+   * diagram's field labels while a preview is drawn.
+   */
+  const drawBandLabels = (state: Readonly<State>, runs: readonly BandRun[]) => {
+    const { compound } = state.diagram.naming;
+    let placed: BandLabel[] = [];
+    if (state.showFieldLabels && !labelsWait(state) && runs.length > 0) {
+      const probe = bandLabels.append("text").attr("class", "band-label");
+      const node = probe.node() as SVGTextElement;
+      const measured = runs.map((r) => {
+        setSvgName(node, r.name, compound);
+        return { ...r, width: measureText(node, LABEL_PX_PER_CHAR) };
+      });
+      probe.remove();
+      placed = placeBandLabels(measured, size.width);
+    }
+    bandLabels
+      .selectAll<SVGTextElement, BandLabel>("text")
+      .data(placed)
+      .join("text")
+      .attr("class", "band-label")
+      .attr("data-phase", (d) => d.phase)
+      .attr("x", (d) => d.x)
+      .attr("y", size.height - BAND_PX - LABEL_LIFT)
+      .each(function (d) {
+        setSvgName(this, d.name, compound);
+      });
+  };
+
   // The g axis follows the cut, so it is redrawn with the curves.
   const drawSlice = (state: Readonly<State>) => {
     drawn = state;
     const { params, cut, atCut, metastableAtCut } = state;
     const s = slice(params, cut, atCut, xs);
-    y = scaleLinear().domain(gDomain(s.min, s.barrier)).range([size.height, 0]);
+    // The envelope's lowest point (a stable line compound's, too) is kept clear of the band and the
+    // names over it.
+    let domain = gDomain(s.min, s.barrier);
+    if (size.height > 0) {
+      const share = Math.min(MIN_CLEARANCE.px / size.height, MIN_CLEARANCE.share);
+      domain = clearBelow(domain, s.min, share);
+    }
+    y = scaleLinear().domain(domain).range([size.height, 0]);
     yAxis.attr("transform", `translate(${MARGIN.left},${MARGIN.top})`).call(
-      axisLeft(y)
+      fixedOffset(axisLeft(y), exporting)
         .ticks(Math.max(2, Math.floor(size.height / TICK_SPACING)))
         .tickSizeOuter(0),
     );
@@ -240,15 +336,57 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
         return TWO_PHASE_KINDS.includes(kind) ? `url(#checker-${uid}-${kind})` : null;
       })
       .attr("d", (d) => fill(d.points));
-    band
-      .selectAll<SVGRectElement, Shade>("rect")
-      .data(s.shades.filter((d) => d.field.kind === "single"))
+    // A stable line compound's field is a point, so its run is widened about it.
+    const point = compoundPointAt(params, cut, atCut);
+    const { naming } = state.diagram;
+    const bandRuns: BandRun[] = s.shades.flatMap((d) =>
+      d.field.kind === "single"
+        ? [
+            {
+              kind: fieldKind(d.field),
+              phase: d.field.phase,
+              name: nameField(naming, d.field).name,
+              x0: px(d.points[0]!),
+              x1: px(d.points.at(-1)!),
+              point: false,
+            },
+          ]
+        : [],
+    );
+    const halfWidth = (COMPOUND_WIDTH * size.width) / 2;
+    if (point?.stable) {
+      const x = px(point);
+      const field: Field = { kind: "single", phase: COMPOUND, X: [point.X, point.X] };
+      bandRuns.push({
+        kind: "C",
+        phase: COMPOUND,
+        name: nameField(naming, field).name,
+        x0: x - halfWidth,
+        x1: x + halfWidth,
+        point: true,
+      });
+      bandRuns.sort((a, b) => a.x0 - b.x0);
+    }
+    compoundShade
+      .selectAll<SVGRectElement, CompoundPoint>("rect")
+      .data(point?.stable ? [point] : [])
       .join("rect")
-      .attr("data-kind", (d) => fieldKind(d.field))
-      .attr("x", (d) => px(d.points[0]!))
-      .attr("width", (d) => px(d.points.at(-1)!) - px(d.points[0]!))
+      .attr("class", "shade")
+      .attr("data-kind", "C")
+      .attr("x", (d) => px(d) - halfWidth)
+      .attr("width", 2 * halfWidth)
+      .attr("y", py)
+      .attr("height", (d) => Math.max(0, size.height - py(d)));
+    band
+      .selectAll<SVGRectElement, BandRun>("rect")
+      .data(bandRuns)
+      .join("rect")
+      .attr("data-kind", (d) => d.kind)
+      .attr("x", (d) => d.x0)
+      .attr("width", (d) => d.x1 - d.x0)
       .attr("y", size.height - BAND_PX)
       .attr("height", BAND_PX);
+    drawBandLabels(state, bandRuns);
     // The runs off the envelope first, so the envelope is drawn over them.
     const runs = [...s.runs].sort((a, b) => Number(a.stable) - Number(b.stable));
     curves
@@ -316,7 +454,6 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
       () => ({ kind: inv!.kind }),
     );
     // From the panel's top down to the point; clipped where the point lies off the g axis.
-    const point = compoundPointAt(params, cut, atCut);
     compoundLine
       .selectAll<SVGLineElement, CompoundPoint>("line")
       .data(point ? [point] : [])
@@ -340,14 +477,17 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
     drawLever(state);
   };
 
-  const drawAll = (state: Readonly<State> = store.state) => {
+  /** Draws the panel at `at` (a figure export's size), or at the observed size. */
+  const drawAll = (state: Readonly<State> = store.state, at?: PlotSize) => {
+    size = at ?? observed;
+    exporting = at !== undefined;
     fitSvg(svg.node() as SVGSVGElement, size, MARGIN);
     clipRect.attr("width", size.width).attr("height", size.height);
     xs = sliceXs(size.width);
     const x = scaleLinear().domain([0, 1]).range([0, size.width]);
     xAxis
       .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
-      .call(axisTop(x).tickValues(xTicks(size.width)).tickSizeOuter(0));
+      .call(fixedOffset(axisTop(x), exporting).tickValues(xTicks(size.width)).tickSizeOuter(0));
     frame.attr("d", frameBottomRight(size));
     drawSlice(state);
   };
@@ -359,7 +499,9 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
     if (
       state.atCut !== prev.atCut ||
       state.metastableAtCut !== prev.metastableAtCut ||
-      state.params !== prev.params
+      state.params !== prev.params ||
+      state.showFieldLabels !== prev.showFieldLabels ||
+      labelsWait(state) !== labelsWait(prev)
     ) {
       drawSlice(state);
     } else if (state.X0 !== prev.X0 || state.showLever !== prev.showLever) {
@@ -370,14 +512,13 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
   // At the diagram's pace while the window is being resized, so that the guides stay in line.
   const redraw = throttle(() => drawAll(), RESIZE_MS);
   attachPanel(container, store, (next) => {
-    size = next;
+    observed = next;
     redraw();
   });
 
   return {
     svg: svg.node() as SVGSVGElement,
-    size: () => size,
-    draw: drawAll,
+    draw: (state, at) => drawAll(state, at),
     drawn: () => drawn,
   };
 }

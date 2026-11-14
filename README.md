@@ -41,8 +41,9 @@ Details has the key.
 - **Metastable** shows or hides the boundaries carried past each invariant
   (dashed), the spinodals (dotted) and the curves off the envelope.
 - **Labels**, the split "L+β / ▲" button, steps through the diagram's labels:
-  the field names (as it opens), then also each marker's name and temperature
-  (e.g. "Eutectic, 634 K"), then those names alone, then none.
+  the field names (as it opens; the slice names its one-phase fields too), then
+  also each marker's name and temperature (e.g. "Eutectic, 634 K"), then those
+  names alone, then none.
 - **Parameters** edits $\alpha_\mathrm{l}$ and $\alpha_\mathrm{s}$, the
   components ($T_\mathrm{m}$, $\Delta s$), an intermediate compound (a line
   compound or one with a range) and the window (fitted automatically while
@@ -71,8 +72,9 @@ Details has the key.
 - **TDB** and **Figure**, above the Parameters panel, save a ZIP with the
   system's JSON file and the system as a CALPHAD database (checked with
   pycalphad), or the plots as SVG or PNG images: both together and each on its
-  own, in the light theme. **Series of cuts** saves the figures at each distinct
-  cut, from high to low T. In the α mode they export what the Δg^M mode would
+  own, in the light theme, at one of three plot sizes and, for PNG, at 150, 300
+  or 600 DPI, at the current cut or, with **All unique cuts**, at each
+  distinct cut, from high to low T. In the α mode they export what the Δg^M mode would
   show.
 - **Model Details**, in the footer, shows the model's equations, the presets,
   the limits and the numerics.

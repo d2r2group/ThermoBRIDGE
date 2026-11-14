@@ -81,6 +81,64 @@ test("a band along the bottom edge marks the one-phase fields in their curve col
   expect(s!.x + s!.width).toBeCloseTo(frame.x + frame.width, 0);
 });
 
+test("the envelope's lowest point keeps 36 px above the bottom edge", async ({ page }) => {
+  const slice = slicePanel(page);
+  // At 900 K in (h), the liquid's minimum; and at 600 K, below the eutectic.
+  for (const T of [900, 600]) {
+    await setCut(page, T);
+    const frame = await plotArea(slice);
+    const lowest = Math.max(
+      ...(await slice
+        .locator(".curve.stable, .tangent.stable")
+        .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().bottom))),
+    );
+    expect(frame.y + frame.height - lowest).toBeGreaterThanOrEqual(35.5);
+  }
+});
+
+test("the band names its one-phase fields while the Labels button shows field names", async ({
+  page,
+}) => {
+  const slice = slicePanel(page);
+  // At 900 K in (h): L and β, each just above its run of the band, in its curve colour.
+  const labels = slice.locator(".band-label");
+  await expect(labels).toHaveText(["L", "β"]);
+  const rects = await slice.locator(".stable-band rect").all();
+  for (const [k, phase] of ["L", "S"].entries()) {
+    const label = labels.nth(k);
+    await expect(label).toHaveAttribute("data-phase", phase);
+    expect(await label.evaluate((el) => getComputedStyle(el).fill)).toBe(
+      await rects[k]!.evaluate((el) => getComputedStyle(el).fill),
+    );
+    const [t, r] = [(await label.boundingBox())!, (await rects[k]!.boundingBox())!];
+    expect(t.x).toBeGreaterThanOrEqual(r.x);
+    expect(t.x + t.width).toBeLessThanOrEqual(r.x + r.width);
+    // Its baseline 3 px above the band.
+    expect(t.y).toBeLessThan(r.y);
+    expect(Number(await label.getAttribute("y"))).toBeCloseTo(
+      Number(await rects[k]!.getAttribute("y")) - 3,
+      6,
+    );
+  }
+  // The button's second state keeps them; its third, point names alone, takes them away.
+  const button = page.locator(".labels-toggle");
+  await button.click();
+  await expect(labels).toHaveCount(2);
+  await button.click();
+  await expect(labels).toHaveCount(0);
+  await button.click();
+  await button.click();
+  await expect(labels).toHaveText(["L", "β"]);
+  // At 400 K, α and β are narrow runs on either side, still named, over the α + β field beside.
+  await setCut(page, 400);
+  await expect(labels).toHaveText(["α", "β"]);
+  const frame = await plotArea(slice);
+  const [a, b] = await Promise.all((await labels.all()).map(async (l) => (await l.boundingBox())!));
+  // Inside the plot area; the text's box takes in its 1.5 px halo.
+  expect(a!.x).toBeGreaterThanOrEqual(frame.x - 1);
+  expect(b!.x + b!.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+});
+
 for (const [width, height] of [
   [900, 700],
   [600, 650],

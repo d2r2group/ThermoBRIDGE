@@ -3,7 +3,15 @@
 
 import { describe, expect, it } from "vitest";
 import { SOLID } from "../src/physics/gibbs";
-import { gDomain, MARGIN_SHARE, MAX_RISE, MIN_DEPTH, slice, sliceXs } from "../src/physics/slice";
+import {
+  clearBelow,
+  gDomain,
+  MARGIN_SHARE,
+  MAX_RISE,
+  MIN_DEPTH,
+  slice,
+  sliceXs,
+} from "../src/physics/slice";
 import { envelopeOver, fieldsOf, scanOf, sliceOf, SYSTEMS, WIDE, XS } from "./sliceFixtures";
 
 describe("the g axis", () => {
@@ -89,5 +97,17 @@ describe("the g axis", () => {
         expect(Math.abs(domains[k]![0] - domains[k - 1]![0])).toBeLessThan(1e-3);
       }
     }
+  });
+});
+
+describe("clearing a point above the g axis's bottom", () => {
+  it("lowers the bottom until the point is the share up the axis", () => {
+    const [lo, hi] = clearBelow([-6, 3], -5.8, 0.1);
+    expect(hi).toBe(3);
+    expect((-5.8 - lo) / (hi - lo)).toBeCloseTo(0.1, 12);
+  });
+
+  it("leaves a point already that high alone", () => {
+    expect(clearBelow([-6, 3], -5, 0.1)).toEqual([-6, 3]);
   });
 });

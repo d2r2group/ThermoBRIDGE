@@ -39,9 +39,16 @@ export interface FieldsLayer {
    * a one-phase field and in --fg for a two-phase one, and a line compound's name beside its
    * line, and returns their outlines, which the points' names avoid. They depend on the
    * system, the plot size and `keepOut` (the α mode's caption, which they keep clear of) only, so
-   * a cut drag leaves them.
+   * a cut drag leaves them. For a figure export (`fixed`), the row hulls they are placed from are
+   * on a grid of MAX_DPR rows per CSS px whatever the screen, so that an export is the same on
+   * any screen (plan §9 phase 21).
    */
-  drawLabels(state: Readonly<State>, size: PlotSize, keepOut?: Box | null): Outline[];
+  drawLabels(
+    state: Readonly<State>,
+    size: PlotSize,
+    keepOut?: Box | null,
+    fixed?: boolean,
+  ): Outline[];
   /** Removes the field labels and a line compound's name, which a preview does not place. */
   clearLabels(): void;
 }
@@ -81,10 +88,10 @@ export function createFieldsLayer(
   /**
    * The bitmap's grid in device pixels, `dprY` rows per CSS px (half `dpr` for a preview, a
    * quarter for a preview with a compound, whose scan costs more: plan §9 phase 19), and the hull
-   * of each of its rows.
+   * of each of its rows; MAX_DPR per CSS px when `fixed`.
    */
-  const grid = ({ diagram }: Readonly<State>, size: PlotSize) => {
-    const dpr = Math.min(MAX_DPR, globalThis.devicePixelRatio || 1);
+  const grid = ({ diagram }: Readonly<State>, size: PlotSize, fixed = false) => {
+    const dpr = fixed ? MAX_DPR : Math.min(MAX_DPR, globalThis.devicePixelRatio || 1);
     const preview = diagram.scan.params.compound ? dpr / 4 : dpr / 2;
     const dprY = isPreview(diagram) ? preview : dpr;
     const cols = Math.max(1, Math.round(size.width * dpr));
@@ -110,7 +117,7 @@ export function createFieldsLayer(
       compoundLabels.selectAll("*").remove();
     },
 
-    drawLabels(state, size, keepOut = null) {
+    drawLabels(state, size, keepOut = null, fixed = false) {
       const { window, diagram } = state;
       const probe = labels.append("text").attr("class", "field-label");
       const node = probe.node() as SVGTextElement;
@@ -124,7 +131,7 @@ export function createFieldsLayer(
         }
         return w / 2;
       };
-      const { hulls } = grid(state, size);
+      const { hulls } = grid(state, size, fixed);
       const key = [diagram, size, hulls, keepOut?.width, keepOut?.height];
       if (!candidates || candidates.key.some((k, i) => k !== key[i])) {
         candidates = {

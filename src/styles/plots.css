@@ -16,6 +16,7 @@
 /* And the subscripts of a compound's formula with decimal subscripts (A₀.₅₇B₀.₄₃). */
 .axis-label .sub,
 .field-label .sub,
+.band-label .sub,
 .lever-fraction .sub,
 .lever-summary .sub,
 .alpha-summary .sub {
@@ -371,6 +372,32 @@
 }
 
 .slice-panel .stable-band rect[data-kind="C"] {
+  fill: var(--curve-compound);
+}
+
+/* Each one-phase field's name just above its run of the band, in its curve colour, on a halo of
+   the background over the shading, while the Labels button shows field names. */
+.slice-panel .band-label {
+  fill: var(--fg);
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.slice-panel .band-label[data-phase="L"] {
+  fill: var(--curve-liquid);
+}
+
+.slice-panel .band-label[data-phase="S"] {
+  fill: var(--curve-solid);
+}
+
+.slice-panel .band-label[data-phase="C"] {
   fill: var(--curve-compound);
 }
 

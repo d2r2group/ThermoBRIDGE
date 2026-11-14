@@ -257,6 +257,14 @@ export function gDomain(min: number, barrier = 0): [number, number] {
   return [min - margin, Math.min(Math.max(0.5 * d, barrier + margin), cap)];
 }
 
+/**
+ * `domain` lowered, where need be, so that g lies at least `share` of the axis's height above
+ * its bottom (a share under 1; the top stays).
+ */
+export function clearBelow([lo, hi]: [number, number], g: number, share: number): [number, number] {
+  return [Math.min(lo, (g - share * hi) / (1 - share)), hi];
+}
+
 /** The X of each touching point of the stable tangents, once each, X increasing. */
 export function touchingXs(fields: readonly Field[]): TieEnd[] {
   const out: TieEnd[] = [];

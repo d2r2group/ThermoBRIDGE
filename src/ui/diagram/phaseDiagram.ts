@@ -9,6 +9,7 @@ import { axisBottom, axisLeft, scaleLinear, select } from "d3";
 import { AXIS_LABELS, setAxisLabel } from "../axisLabels";
 import {
   CUT_KNOB_R,
+  fixedOffset,
   frameTopRight,
   LEVER_KNOB_R,
   MARGIN,
@@ -31,14 +32,14 @@ import { createLeverLayer } from "./leverLayer";
 import { drawLines } from "./linesLayer";
 
 /**
- * A plot as a figure export (plan §9 phase 20) sees it: its SVG, its plot size, and a redraw from
- * a state other than the store's, which the export uses to draw the α mode's system as the Δg^M
- * mode would show it, and then the store's state again.
+ * A plot as a figure export (plan §9 phases 20–21) sees it: its SVG, and a redraw from a state
+ * other than the store's, which the export uses to draw the α mode's system as the Δg^M mode
+ * would show it, and then the store's state again. Given a `size`, it draws at that plot size,
+ * the export's, and otherwise at the size the container last gave it.
  */
 export interface PlotHandle {
   svg: SVGSVGElement;
-  size(): PlotSize;
-  draw(state: Readonly<State>): void;
+  draw(state: Readonly<State>, size?: PlotSize): void;
 }
 
 /** Builds the diagram inside `container` and keeps it in sync with `store`. */
@@ -93,8 +94,12 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHa
   // The lever's knob over the cut's handle, so that it takes the pointer first.
   const leverKnobGroup = plot.append("g").attr("class", "lever-knob-layer");
 
-  let size: PlotSize = { width: 0, height: 0 };
+  /** The plot size the container last gave, and the one the diagram last drew at. */
+  let observed: PlotSize = { width: 0, height: 0 };
+  let size: PlotSize = observed;
   const getSize = () => size;
+  /** Whether the last draw was an export's, which fixes the field labels' grid. */
+  let exporting = false;
   const fields = createFieldsLayer(container, canvas, labelLayer, compoundLabelLayer);
   const drawCut = createCutLayer(
     {
@@ -129,10 +134,12 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHa
     // Tick marks only: the slice panel's top axis right under this one carries the numbers, so
     // the row under the diagram is left to the bold values (plan §4 item 1). The α mode has
     // neither, so the numbers go here (§9 phase 16).
-    const ticks = axisBottom(x).tickValues(xTicks(size.width)).tickSizeOuter(0);
+    const ticks = fixedOffset(axisBottom(x), exporting)
+      .tickValues(xTicks(size.width))
+      .tickSizeOuter(0);
     xAxis.call(mode === "alpha" ? ticks : ticks.tickFormat(() => ""));
     yAxis.attr("transform", `translate(${MARGIN.left},${MARGIN.top})`).call(
-      axisLeft(y)
+      fixedOffset(axisLeft(y), exporting)
         .ticks(Math.floor(size.height / TICK_SPACING))
         .tickFormat((v) => String(v))
         .tickSizeOuter(0),
@@ -163,21 +170,27 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHa
   const drawLabelled = (state: Readonly<State>) => {
     const wait = labelsWait(state);
     const outlines =
-      state.showFieldLabels && !wait ? fields.drawLabels(state, size, captionBox) : [];
+      state.showFieldLabels && !wait ? fields.drawLabels(state, size, captionBox, exporting) : [];
     if (!state.showFieldLabels || wait) fields.clearLabels();
     if (state.showPointLabels && !wait)
       drawPointLabels(pointLabelLayer, state, size, outlines, captionBox);
     else pointLabelLayer.selectAll("*").remove();
   };
 
-  const drawAll = (state: Readonly<State> = store.state) => {
+  /**
+   * Draws every layer at `at`, or at the observed size. An export's draw (with `at`) leaves the
+   * raster, which the export does not use, to the draw back.
+   */
+  const drawAll = (state: Readonly<State> = store.state, at?: PlotSize) => {
+    size = at ?? observed;
+    exporting = at !== undefined;
     svg.attr(
       "aria-label",
       state.mode === "alpha" ? "T-X phase diagram" : "T-X phase diagram with a horizontal cut",
     );
     fitSvg(svgNode, size, MARGIN);
     frame.attr("d", frameTopRight(size));
-    fields.paint(state, size);
+    if (!exporting) fields.paint(state, size);
     drawLines({ ...lineLayers, points }, state, size);
     captionBox = drawCaption(state, size);
     drawLabelled(state);
@@ -216,7 +229,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHa
   // RESIZE_MS, and once more at the end; the slice panel keeps the same pace.
   const redraw = throttle(() => drawAll(), RESIZE_MS);
   attachPanel(container, store, (next) => {
-    size = next;
+    observed = next;
     redraw();
   });
 
@@ -238,5 +251,5 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHa
     drawLever(state, size);
   });
 
-  return { svg: svgNode, size: () => size, draw: drawAll };
+  return { svg: svgNode, draw: (state, at) => drawAll(state, at) };
 }

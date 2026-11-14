@@ -213,3 +213,39 @@ for (const [what, compound, fragment] of [
     });
   }
 }
+
+// A whole figure export (plan §9 phase 21) at each plot size, from the click on SVG or PNG to the
+// download, at 1× and 2× device pixels: it draws both plots at the export's size, builds the field
+// paths and draws the page back.
+for (const dpr of [1, 2]) {
+  test.describe(`a figure export, ${dpr}× device pixels`, () => {
+    test.use({ deviceScaleFactor: dpr });
+    for (const fragment of ["", "#c6"]) {
+      test(`at each plot size${fragment && `, ${fragment}`}`, async ({ page }) => {
+        await page.goto(`./${fragment}`);
+        await page.locator(".phase-diagram svg").waitFor();
+        const lines: string[] = [];
+        for (const size of ["360 × 180", "540 × 270", "720 × 360"]) {
+          for (const format of ["SVG", "PNG"]) {
+            const times: number[] = [];
+            for (let k = 0; k < 5; k++) {
+              await page.getByRole("button", { name: "Figure" }).click();
+              await page.getByRole("menuitemradio", { name: size }).click();
+              const t0 = Date.now();
+              await Promise.all([
+                page.waitForEvent("download"),
+                page.getByRole("menuitem", { name: format }).click(),
+              ]);
+              times.push(Date.now() - t0);
+            }
+            lines.push(`${size} ${format} ${stats(times)}`);
+          }
+        }
+        console.log(
+          `figure export${fragment && ` of ${fragment}`}, DPR ${dpr}, median / p95 / max ms:\n  ` +
+            lines.join("\n  "),
+        );
+      });
+    }
+  });
+}

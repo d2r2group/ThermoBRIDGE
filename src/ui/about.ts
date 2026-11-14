@@ -73,9 +73,10 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
         context: "main-row",
         name: "Labels",
         text:
-          "Steps through the diagram's labels: the field names (the top half, filled), then " +
-          "also each marker's name and temperature, such as “Eutectic, 634 K” (the bottom " +
-          "half), then those names alone, then none. It opens on the field names alone.",
+          "Steps through the diagram's labels: the field names (the top half, filled), with " +
+          "the slice's one-phase field names, then also each marker's name and temperature, " +
+          "such as “Eutectic, 634 K” (the bottom half), then those names alone, then none. It " +
+          "opens on the field names alone.",
       },
       {
         selector: ".main-row .share",
@@ -166,9 +167,10 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
         text:
           "Save a ZIP with the system's JSON file and, from TDB, the system as a CALPHAD " +
           "database or, from Figure, the plots as SVG or PNG images: both plots together and " +
-          "each on its own, in the light theme. In the <i>α</i> mode they export the system as " +
-          "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>Series of cuts</i> ticked in " +
-          "Figure's menu, the images are saved at each distinct cut, from high to low " +
+          "each on its own, in the light theme, at the plot size chosen in Figure's menu, and a " +
+          "PNG at the DPI chosen there. In the <i>α</i> mode they export the system as " +
+          "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>All unique cuts</i> chosen in " +
+          "Figure's menu, in place of the current cut, the images are saved at each distinct cut, from high to low " +
           "<i>T</i>: one in each band of the same phases, at its middle, and one at each invariant.",
       },
       {

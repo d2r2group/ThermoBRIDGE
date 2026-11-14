@@ -1,19 +1,35 @@
-// The figure export (plan §9 phase 20): the two plots as SVG or PNG images in the light theme,
-// built from the page's own SVGs. Three images: both plots as on screen, and each plot on its own,
-// redrawn to stand alone; for a series, three at each of its cuts. In the α mode, or for a series,
-// the plots are first drawn as the export shows them (`Store.dgState`, `stateAtCut`), and drawn
-// back afterwards. Everything that touches the page runs in one synchronous task, so no frame
-// shows the light theme, the other mode or another cut.
+// The figure export (plan §9 phases 20–21): the two plots as SVG or PNG images in the light
+// theme, built from the page's own SVGs. Three images: both plots together, and each plot on its
+// own, redrawn to stand alone; for a series, three at each of its cuts. The plots are first drawn
+// as the export shows them, at the plot size chosen in the menu (`Store.dgState`, `stateAtCut`),
+// and drawn back afterwards. The diagram's fields are vector paths (fieldPaths.ts), not the
+// screen's raster. Everything that touches the page runs in one synchronous task, so no frame
+// shows the light theme, the other mode, another cut or the export's size.
 
 import { axisBottom, scaleLinear, select } from "d3";
+import { bands } from "../physics/boundaries";
+import { fieldAreas } from "../physics/fieldAreas";
 import type { Params } from "../physics/gibbs";
-import { paintRegions, regionRaster, rowHulls } from "./regions";
+import { fieldPaths } from "./fieldPaths";
 import type { PlotHandle } from "./diagram/phaseDiagram";
 import { frameTopRight, MARGIN, SLICE_MARGIN, xTicks, type PlotSize } from "./geometry";
-import type { SliceHandle } from "./slicePanel";
+import { pngSide, withPhys } from "./png";
+import { KIND_COLOURS, TWO_PHASE_KINDS, type RegionKind } from "./regions";
+import { appendCheckerPatterns, type SliceHandle } from "./slicePanel";
 import type { State } from "./state";
 
 export type FigureFormat = "svg" | "png";
+
+/**
+ * The plot sizes the Figure menu offers, CSS px, the same for both plots and half as tall as wide
+ * (§10.3 item 7), and the one chosen at first.
+ */
+export const PLOT_SIZES: readonly PlotSize[] = [
+  { width: 360, height: 180 },
+  { width: 540, height: 270 },
+  { width: 720, height: 360 },
+];
+export const DEFAULT_PLOT_SIZE = PLOT_SIZES[2]!;
 
 /** The plots and the page element whose `data-mode` the α mode sets (modeToggle.ts). */
 export interface FigurePlots {
@@ -28,17 +44,12 @@ export interface FigureImage {
   svg: SVGSVGElement;
 }
 
-/** The region raster's pixels per CSS px: finer for PNG, which is drawn at 3× (§10.2 item 5). */
-const REGION_SCALE: Record<FigureFormat, number> = { svg: 2, png: 3 };
-/** A PNG's pixels per CSS px. */
-const PNG_SCALE = 3;
 /** Room around what an image holds, CSS px. */
 const PAD = 8;
 /** The one font the images name, with a fallback (§10.2 item 4). */
 const FONT = "Lato, sans-serif";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const XLINK_NS = "http://www.w3.org/1999/xlink";
 
 /**
  * The properties inlined from the computed style. All are inherited, so an element writes only
@@ -214,33 +225,34 @@ function fitTo(svg: SVGSVGElement, box: DOMRect): void {
   svg.removeAttribute("style");
 }
 
-/** The region raster of `state`'s system at `scale` px per CSS px, as a PNG data URL. */
-function regionImage(
-  state: Readonly<State>,
-  size: PlotSize,
-  scale: number,
-  style: CSSStyleDeclaration,
-) {
-  const cols = Math.max(1, Math.round(size.width * scale));
-  const rows = Math.max(1, Math.round(size.height * scale));
-  const { params, window } = state.diagram.scan;
-  const kinds = regionRaster(rowHulls(params, window, rows), cols);
-  const canvas = document.createElement("canvas");
-  paintRegions(canvas, kinds, cols, rows, scale, style);
-  return canvas.toDataURL("image/png");
-}
+/** The prefix of the field patterns' ids in an image. */
+const FIELD_PATTERN = "field";
 
-/** An `<image>` of the region raster under the diagram's plot area. */
-function regionElement(href: string, size: PlotSize): SVGImageElement {
-  const image = document.createElementNS(SVG_NS, "image");
-  image.setAttribute("x", String(MARGIN.left));
-  image.setAttribute("y", String(MARGIN.top));
-  image.setAttribute("width", String(size.width));
-  image.setAttribute("height", String(size.height));
-  image.setAttribute("preserveAspectRatio", "none");
-  image.setAttribute("href", href);
-  image.setAttributeNS(XLINK_NS, "xlink:href", href);
-  return image;
+/** The diagram's fields as one path per kind, in plot-area px (fieldPaths.ts). */
+type FieldPaths = { kind: RegionKind; d: string }[];
+
+/**
+ * Puts the diagram's fields at the bottom of `clone`: a group at the plot area's corner, at the
+ * region opacity, with one path per kind, in the phase's colour or its checkerboard pattern,
+ * appended to the clone's `<defs>`. Its fills and opacity are the page's custom properties, set
+ * through `style`, which `inlineClone` then resolves in the light theme.
+ */
+function prependFields(clone: SVGSVGElement, paths: FieldPaths): void {
+  const defs = document.createElementNS(SVG_NS, "defs");
+  appendCheckerPatterns(select(defs), FIELD_PATTERN);
+  const group = document.createElementNS(SVG_NS, "g");
+  group.setAttribute("transform", `translate(${MARGIN.left},${MARGIN.top})`);
+  group.style.opacity = "var(--region-opacity)";
+  for (const { kind, d } of paths) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    path.style.fill = TWO_PHASE_KINDS.includes(kind)
+      ? `url(#${FIELD_PATTERN}-${kind})`
+      : `var(${KIND_COLOURS[kind][0]})`;
+    path.style.stroke = "none";
+    group.append(path);
+  }
+  clone.prepend(defs, group);
 }
 
 /** The bottom of an element's box in its parent's units: its translate plus its box's bottom. */
@@ -255,39 +267,40 @@ function drawXAxis(axis: SVGGElement, size: PlotSize, y: number, left: number): 
   const x = scaleLinear().domain([0, 1]).range([0, size.width]);
   select(axis)
     .attr("transform", `translate(${left},${y})`)
-    .call(axisBottom(x).tickValues(xTicks(size.width)).tickSizeOuter(0));
+    .call(axisBottom(x).offset(0).tickValues(xTicks(size.width)).tickSizeOuter(0));
 }
 
 /** The X-axis label's and the component names' baseline gap under what is above them, CSS px. */
 const LABEL_GAP = 15;
 
 /**
- * The three images of what the plots now show: both plots as on screen (the diagram's top at y 0,
- * the slice panel's at `offset`), the diagram alone and the slice panel alone, with the region
- * raster `region` under the diagram. The clones wait in the page until `pieces` are removed.
+ * The three images of what the plots now show: both plots together (the diagram's top at y 0,
+ * the slice panel's at `offset`), the diagram alone and the slice panel alone, with the field
+ * paths `fields` under the diagram. The clones wait in the page until `pieces` are removed.
  */
 function capture(
   plots: FigurePlots,
   size: PlotSize,
   offset: number,
-  region: string,
+  fields: FieldPaths,
   pieces: SVGSVGElement[],
 ): FigureImage[] {
   const { diagram, slice } = plots;
-  // Both plots, as on screen.
+  // Both plots together.
   const fullDiagram = cloneBeside(diagram.svg);
   const fullSlice = cloneBeside(slice.svg);
   pieces.push(fullDiagram, fullSlice);
+  prependFields(fullDiagram, fields);
   // What the slice panel alone takes from the diagram, styled to stand under any parent.
   const boldValues = fullDiagram.querySelector(".bold-values")!;
   const xLabels = [...fullDiagram.querySelectorAll(".x-label, .component-name")];
   inlineClone(fullDiagram, new Set([boldValues, ...xLabels]));
   inlineClone(fullSlice);
-  fullDiagram.prepend(regionElement(region, size));
 
   // The diagram alone: no guide lines or bold values, and the X axis with its numbers.
   const lone = cloneBeside(diagram.svg);
   pieces.push(lone);
+  prependFields(lone, fields);
   for (const el of lone.querySelectorAll(".guides, .guide, .bold-values")) el.remove();
   const axisY = MARGIN.top + size.height;
   const loneAxis = lone.querySelector<SVGGElement>(".x-axis")!;
@@ -297,7 +310,6 @@ function capture(
     if (Number(el.getAttribute("y")) < lowest) el.setAttribute("y", String(lowest));
   }
   inlineClone(lone);
-  lone.prepend(regionElement(region, size));
 
   // The slice panel alone: no guide lines, and the X axis at the bottom with its numbers, the
   // bold values under them and the X-axis label under those.
@@ -356,43 +368,36 @@ function capture(
 }
 
 /**
- * The three images of the figure for each of `views`, in the light theme, with the region raster
- * at the format's scale. The views are states of one system in the Δg^M mode: the store's own,
- * the Δg^M mode's view of the α mode's system, or those at the cuts of a series. A view that is
- * not `current` is drawn into the plots for the export, and `current` is drawn back afterwards.
+ * The three images of the figure for each of `views`, in the light theme, at the plot size
+ * `size`. The views are states of one system in the Δg^M mode: the store's own, the Δg^M mode's
+ * view of the α mode's system, or those at the cuts of a series. Each is drawn into the plots at
+ * `size` for the export, and `current` is drawn back afterwards at the plots' own size.
  */
 export function buildFigures(
   plots: FigurePlots,
   views: readonly Readonly<State>[],
   current: Readonly<State>,
-  format: FigureFormat,
+  size: PlotSize,
 ): FigureImage[][] {
   const { app, diagram, slice } = plots;
   const html = document.documentElement;
   const theme = html.getAttribute("data-theme");
   const alpha = current.mode === "alpha";
-  const redraws = views.some((view) => view !== current);
   const sliceWas = slice.drawn();
   const pieces: SVGSVGElement[] = [];
   try {
     if (alpha) app.dataset.mode = "dg";
     html.removeAttribute("data-theme");
-    const size = diagram.size();
-    // Measured before any clone is in the page.
-    const offset = slice.svg.getBoundingClientRect().top - diagram.svg.getBoundingClientRect().top;
-    // The views share one system, so they share its raster.
-    const region = regionImage(
-      views[0] ?? current,
-      size,
-      REGION_SCALE[format],
-      getComputedStyle(diagram.svg.parentElement!),
-    );
+    // The two plots are stacked with no gap (main.ts), so the slice panel starts under the
+    // diagram's SVG, computed rather than read from the page.
+    const offset = MARGIN.top + size.height + MARGIN.bottom;
+    // The views share one system, so they share its fields, from the scan the lines come from.
+    const { scan } = (views[0] ?? current).diagram;
+    const fields = fieldPaths(fieldAreas(bands(scan.params, scan.window, scan)), scan.window, size);
     return views.map((view) => {
-      if (redraws) {
-        diagram.draw(view);
-        slice.draw(view);
-      }
-      return capture(plots, size, offset, region, pieces);
+      diagram.draw(view, size);
+      slice.draw(view, size);
+      return capture(plots, size, offset, fields, pieces);
     });
   } finally {
     for (const p of pieces) if (p.isConnected) p.remove();
@@ -401,10 +406,8 @@ export function buildFigures(
     if (alpha) app.dataset.mode = current.mode;
     // After the theme is back, so that the bitmap is painted in the page's colours.
     // The α mode leaves its hidden slice panel as it last drew it; the Δg^M mode shows `current`.
-    if (redraws) {
-      diagram.draw(current);
-      slice.draw(alpha ? sliceWas : current);
-    }
+    diagram.draw(current);
+    slice.draw(alpha ? sliceWas : current);
   }
 }
 
@@ -457,10 +460,15 @@ export function svgText(svg: SVGSVGElement): string {
 }
 
 /**
- * `svg` drawn at PNG_SCALE× over the light background, as PNG bytes. The SVG drawn embeds Lato; the
+ * `svg` drawn at `dpi` (`dpi / 96` px per CSS px, so that it prints at the SVG's size) over the
+ * light background, as PNG bytes whose `pHYs` chunk records the DPI. The SVG drawn embeds Lato; the
  * one passed in is left as it is.
  */
-export async function pngOf(svg: SVGSVGElement, background = "#ffffff"): Promise<Uint8Array> {
+export async function pngOf(
+  svg: SVGSVGElement,
+  dpi: number,
+  background = "#ffffff",
+): Promise<Uint8Array> {
   const { FONT_FACES } = await import("./figureFonts");
   const copy = svg.cloneNode(true) as SVGSVGElement;
   const style = document.createElementNS(SVG_NS, "style");
@@ -474,8 +482,8 @@ export async function pngOf(svg: SVGSVGElement, background = "#ffffff"): Promise
     image.src = url;
     await image.decode();
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(width * PNG_SCALE);
-    canvas.height = Math.round(height * PNG_SCALE);
+    canvas.width = pngSide(width, dpi);
+    canvas.height = pngSide(height, dpi);
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("no 2D canvas for the PNG");
     ctx.fillStyle = background;
@@ -483,7 +491,7 @@ export async function pngOf(svg: SVGSVGElement, background = "#ffffff"): Promise
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/png"));
     if (!blob) throw new Error("the PNG could not be encoded");
-    return new Uint8Array(await blob.arrayBuffer());
+    return withPhys(new Uint8Array(await blob.arrayBuffer()), dpi);
   } finally {
     URL.revokeObjectURL(url);
   }

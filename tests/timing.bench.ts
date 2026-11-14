@@ -10,6 +10,7 @@ import type { Params } from "../src/physics/gibbs";
 import { compoundPreset, preset } from "../src/physics/presets";
 import { validate } from "../src/physics/validity";
 import { autoWindow } from "../src/physics/autoWindow";
+import { MAX_DPR, rowHulls } from "../src/ui/regions";
 import { computeDiagram } from "../src/ui/state";
 import { prepareSystem } from "../src/ui/systemFields";
 import { AlphaCache, computeAlpha } from "../src/ui/alphaCache";
@@ -216,5 +217,24 @@ test("the α mode's diagrams of (h) with c1's compound", async ({ bench }) => {
     bench("preview, c1's compound", () => {
       computeDiagram(params, window, undefined, undefined, COARSE_STEP);
     }),
+  );
+});
+
+// The figure export (plan §9 phase 21): at a fixed plot size, its field labels are placed from
+// row hulls on a grid of MAX_DPR rows per CSS px, 360, 540 or 720 rows, which `rowHullsOf` does
+// not keep beside the screen's, so each export computes them and the draw back computes the
+// screen's again. (h) has the default window; c6 the tallest of the compound presets.
+test("row hulls at the export heights' row counts", async ({ bench }) => {
+  const h = preset("h");
+  const c6 = compoundPreset("c6");
+  await bench.compare(
+    ...[180, 270, 360].flatMap((height) => [
+      bench(`(h), ${height} px at ${MAX_DPR}×: ${height * MAX_DPR} rows`, () => {
+        rowHulls(h.params, h.window, height * MAX_DPR);
+      }),
+      bench(`c6, ${height} px at ${MAX_DPR}×: ${height * MAX_DPR} rows`, () => {
+        rowHulls(c6.params, c6.window, height * MAX_DPR);
+      }),
+    ]),
   );
 });
