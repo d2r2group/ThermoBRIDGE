@@ -5,7 +5,7 @@
 import { GITHUB, icon } from "./icons";
 
 /** Where the source lives. */
-export const REPO_URL = "https://github.com/d2r2group/MATL7355_Apps/tree/main/ThermoBRIDGE";
+export const REPO_URL = "https://github.com/d2r2group/ThermoBRIDGE";
 
 /** A link to the repository with the GitHub mark, opening in a new tab. */
 export function createRepoLink(): HTMLAnchorElement {

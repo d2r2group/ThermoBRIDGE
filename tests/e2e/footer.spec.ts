@@ -48,7 +48,7 @@ test("the footer comes after the plots and the controls column, with the link, t
   const github = footer.getByRole("link", { name: "GitHub" });
   await expect(github).toHaveAttribute(
     "href",
-    "https://github.com/d2r2group/MATL7355_Apps/tree/main/ThermoBRIDGE",
+    "https://github.com/d2r2group/ThermoBRIDGE",
   );
   await expect(github).toHaveAttribute("target", "_blank");
   await expect(github).toHaveAttribute("rel", "noopener noreferrer");

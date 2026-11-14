@@ -133,10 +133,18 @@ test("the band names its one-phase fields while the Labels button shows field na
   await setCut(page, 400);
   await expect(labels).toHaveText(["α", "β"]);
   const frame = await plotArea(slice);
-  const [a, b] = await Promise.all((await labels.all()).map(async (l) => (await l.boundingBox())!));
-  // Inside the plot area; the text's box takes in its 1.5 px halo.
-  expect(a!.x).toBeGreaterThanOrEqual(frame.x - 1);
-  expect(b!.x + b!.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+  // Inside the plot area with their 1.5 px halo: the text's own box, in plot-area px (Chromium's
+  // page box pads it by the whole stroke width, which puts it on the edge to within rounding).
+  const [a, b] = await Promise.all(
+    (await labels.all()).map((l) =>
+      l.evaluate((el: SVGTextElement) => {
+        const { x, width } = el.getBBox();
+        return { x, width };
+      }),
+    ),
+  );
+  expect(a!.x - 1.5).toBeGreaterThanOrEqual(0);
+  expect(b!.x + b!.width + 1.5).toBeLessThanOrEqual(frame.width);
 });
 
 for (const [width, height] of [
