@@ -141,6 +141,15 @@ function alongCut(params: Params, diagram: Diagram, cut: number) {
   };
 }
 
+/**
+ * `state` with the cut at T, clamped into the window, and what the cut derives; for a figure
+ * series (plan §9 phase 20), which draws the plots at cuts the store never takes.
+ */
+export function stateAtCut(state: Readonly<State>, T: number): Readonly<State> {
+  const cut = clampCut(T, state.window);
+  return { ...state, cut, ...alongCut(state.params, state.diagram, cut) };
+}
+
 /** Where the lever rule's X₀ starts (plan §4 item 7). */
 export const DEFAULT_X0 = 0.5;
 
@@ -351,9 +360,13 @@ export class Store {
     });
   }
 
-  #leaveAlpha(): void {
-    const kept = this.#kept!;
-    this.#kept = null;
+  /**
+   * The state that leaving the α mode would give (`setMode("dg")`), without leaving it; in the
+   * Δg^M mode, the state itself. A TDB or figure export (plan §9 phase 20) writes this.
+   */
+  dgState(): Readonly<State> {
+    const kept = this.#kept;
+    if (this.#state.mode === "dg" || !kept) return this.#state;
     const {
       params,
       window,
@@ -363,8 +376,7 @@ export class Store {
       showPointLabels,
     } = this.#state;
     if (sameParams(params, kept.entry)) {
-      this.#update({ ...kept.state, showMetastable, showFieldLabels, showPointLabels });
-      return;
+      return { ...kept.state, showMetastable, showFieldLabels, showPointLabels };
     }
     // At a preset's parameters the Δg^M mode takes the preset, in its own window.
     const match = PRESETS.find((p) => sameParams(params, p.params));
@@ -372,7 +384,8 @@ export class Store {
     // A drag can leave a preview on screen; the Δg^M mode draws the full diagram.
     const diagram = match || isPreview(shown) ? computeDiagram(params, target) : shown;
     const cut = defaultCut(target);
-    this.#update({
+    return {
+      ...this.#state,
       mode: "dg",
       name: match ? match.label : alphaName(params),
       window: target,
@@ -383,7 +396,13 @@ export class Store {
       showLever: kept.state.showLever,
       X0: kept.state.X0,
       alphaMoving: false,
-    });
+    };
+  }
+
+  #leaveAlpha(): void {
+    const next = this.dgState();
+    this.#kept = null;
+    this.#update(next);
   }
 
   /** Ticks or unticks the α mode's *Stay on the axes* box. */

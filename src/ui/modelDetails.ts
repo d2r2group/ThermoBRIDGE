@@ -266,6 +266,30 @@ export function modelDetailsHtml(): string {
   points' names; the full diagram replaces it once the knob rests.</p>
 </section>
 <section>
+  <h3>Exporting</h3>
+  <p><i>TDB</i> saves the system as a CALPHAD database in J/mol: the pure liquids are the
+  reference, the pure solids lie at ${tex`G = -\Delta h_i + \Delta s_i T`} with
+  ${tex`\Delta h_i = T_{\mathrm{m},i}\,\Delta s_i`}, and each ${tex`\alpha`} is the zeroth
+  Redlich–Kister term ${tex`L(\varphi, \mathrm{A}, \mathrm{B}; 0)`} of LIQUID or SOLID, each
+  with two composition sets for a miscibility gap. A line compound is a stoichiometric GAMMA
+  with sites ${tex`1 - X_\mathrm{c}`} and ${tex`X_\mathrm{c}`}; a compound with a range is a
+  substitutional GAMMA whose end members lie above the pure solids so that its curve passes
+  ${tex`\Delta h_\mathrm{f} - T\,\Delta s_\mathrm{f}`} below them at
+  ${tex`X_\mathrm{c}`}. The elements are named from the components (upper-cased, at most two
+  letters, else A and B); the file's header maps them back and holds the share link. The file
+  was checked with pycalphad; other programs have not been tried. <i>Figure</i> saves three SVG
+  or PNG images in the light theme: both plots as on screen, the diagram alone with its
+  ${tex`X_\mathrm{B}`} numbers, and the slice panel alone with its ${tex`X_\mathrm{B}`} axis
+  at the bottom and the touching points' values under it; the single plots leave out the
+  guide lines. The SVG names Lato and keeps its text as text; the PNG, at 3× the size,
+  embeds it. Each export is a ZIP with the system's JSON file, which Import opens; each file
+  carries the share link, with the cut and ${tex`X_0`}. With <i>Series of cuts</i> ticked,
+  the images are saved at each distinct cut, from the top of the window down: one in the middle
+  of each band of temperatures between the melting, critical and congruent points and the
+  invariants, over which the phases along the cut stay the same, and one at each invariant. In the α mode both export the system
+  as the Δg<sup>M</sup> mode would show it.</p>
+</section>
+<section>
   <h3>Presets</h3>
   <p>The presets are grouped by what the solutions do. With both ideal the diagram is a lens.
   With an ideal solid and a non-ideal liquid the solid still mixes fully, and the lens has a

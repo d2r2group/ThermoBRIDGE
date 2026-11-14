@@ -41,7 +41,7 @@ describe("model details", () => {
     expect(rows).toEqual(PRESETS.map((p) => p.label));
   });
 
-  it("holds the eight sections, with the table, and the development note", () => {
+  it("holds the nine sections, with the table, and the development note", () => {
     const html = modelDetailsHtml();
     const headings = [...html.matchAll(/<h3>([^<]*)<\/h3>/g)].map(([, h]) => h);
     expect(headings).toEqual([
@@ -50,6 +50,7 @@ describe("model details", () => {
       "An intermediate compound",
       "The slice panel",
       "The α mode",
+      "Exporting",
       "Presets",
       "Limits",
       "Numerics",

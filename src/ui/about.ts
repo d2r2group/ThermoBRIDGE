@@ -160,6 +160,18 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
     heading: "Beside the plots, or below them on a phone",
     keys: [
       {
+        selector: ".export-row",
+        context: "",
+        name: "TDB and Figure",
+        text:
+          "Save a ZIP with the system's JSON file and, from TDB, the system as a CALPHAD " +
+          "database or, from Figure, the plots as SVG or PNG images: both plots together and " +
+          "each on its own, in the light theme. In the <i>α</i> mode they export the system as " +
+          "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>Series of cuts</i> ticked in " +
+          "Figure's menu, the images are saved at each distinct cut, from high to low " +
+          "<i>T</i>: one in each band of the same phases, at its middle, and one at each invariant.",
+      },
+      {
         selector: ".parameters summary",
         context: "parameters",
         name: "Parameters",

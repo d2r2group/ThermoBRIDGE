@@ -35,6 +35,14 @@ export const UPLOAD = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-
 /** An arrow into a tray: Export, which saves a file. */
 export const DOWNLOAD =
   '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>';
+/** A database cylinder: TDB, which saves the system as a CALPHAD database. */
+export const DATABASE =
+  '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3"/>' +
+  '<path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>';
+/** A framed picture: Figure, which saves the plots as images. */
+export const PICTURE =
+  '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>' +
+  '<path d="M21 15l-5-5L5 21"/>';
 /** Three linked nodes: Share. */
 export const SHARE =
   '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>' +

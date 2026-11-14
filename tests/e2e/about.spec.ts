@@ -53,6 +53,7 @@ test("it opens a modal overlay that summarizes the app and explains each control
     "Line Compound",
     "Compound sliders",
     "Pad or sliders",
+    "TDB and Figure",
     "Parameters",
     "Add compound",
     "Apply",

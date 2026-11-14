@@ -14,6 +14,8 @@ import {
   createMetastableToggle,
   createReadout,
 } from "./ui/controls";
+import { createExportRow } from "./ui/exportRow";
+import type { FigurePlots } from "./ui/figure";
 import { createLeverReadout, createLeverToggle } from "./ui/leverControls";
 import { openLink } from "./ui/link";
 import { createLogo } from "./ui/logo";
@@ -48,7 +50,8 @@ probe.remove();
 // the plots, fitted to the window's height, with the α mode's pad over the lower one's box (phase
 // 17), and a column beside them where it has 19rem, or below them otherwise: the cut input (in the
 // α mode, the α values in its place), the lever readout (while the lever rule is on), the readout
-// (for screen readers only) and the Parameters panel. The footer follows, after <main>.
+// (for screen readers only), the export row (TDB and Figure, §9 phase 20) and the Parameters
+// panel. The footer follows, after <main>.
 const header = document.createElement("header");
 const mainRow = document.createElement("div");
 mainRow.className = "main-row";
@@ -78,6 +81,9 @@ createThemeToggle(header);
 createCutInput(controls, store);
 createLeverReadout(controls, store);
 createReadout(controls, store);
+// Built before the plots, which it exports, so that it sits above the Parameters panel.
+let figurePlots: FigurePlots | null = null;
+createExportRow(controls, store, () => figurePlots!);
 const panel = createSystemPanel(controls, store);
 // Custom opens the panel, and scrolls to it where the column has wrapped under the plots.
 createSystemMenu(mainRow, store, () =>
@@ -87,8 +93,11 @@ createLeverToggle(mainRow, store);
 createMetastableToggle(mainRow, store);
 createLabelsToggle(mainRow, store);
 createShare(mainRow, store);
-createPhaseDiagram(diagram, store);
-createSlicePanel(slice, store);
+figurePlots = {
+  app,
+  diagram: createPhaseDiagram(diagram, store),
+  slice: createSlicePanel(slice, store),
+};
 // The α mode's pad and slider over the slice panel's box, and its values after the cut input.
 const timing = new URLSearchParams(location.search).has("timing");
 const alphaCache = new AlphaCache();

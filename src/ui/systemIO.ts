@@ -1,5 +1,6 @@
 // Import and Export in the Parameters panel (plan §8 rows 17 and 18): the hidden file picker that
-// Import opens, and the download of the applied system as a JSON file.
+// Import opens, and the download of the applied system as a JSON file, with the download helper
+// that the TDB and figure exports (exportRow.ts) use too.
 
 import { report, setLabel } from "./buttons";
 import { DOWNLOAD, UPLOAD } from "./icons";
@@ -64,16 +65,20 @@ export function createFileActions(
 
   exportButton.addEventListener("click", () => {
     const system = appliedSystem(store.state);
-    const blob = new Blob([toSystemFile(system)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName(system.name);
-    document.body.append(link);
-    link.click();
-    link.remove();
-    // Revoked later, since some browsers start the download only after the click returns.
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    download(new Blob([toSystemFile(system)], { type: "application/json" }), fileName(system.name));
   });
   return actions;
+}
+
+/** Downloads `blob` as `name`. */
+export function download(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // Revoked later, since some browsers start the download only after the click returns.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

@@ -30,8 +30,19 @@ import { drawPointLabels } from "./pointLabels";
 import { createLeverLayer } from "./leverLayer";
 import { drawLines } from "./linesLayer";
 
+/**
+ * A plot as a figure export (plan §9 phase 20) sees it: its SVG, its plot size, and a redraw from
+ * a state other than the store's, which the export uses to draw the α mode's system as the Δg^M
+ * mode would show it, and then the store's state again.
+ */
+export interface PlotHandle {
+  svg: SVGSVGElement;
+  size(): PlotSize;
+  draw(state: Readonly<State>): void;
+}
+
 /** Builds the diagram inside `container` and keeps it in sync with `store`. */
-export function createPhaseDiagram(container: HTMLElement, store: Store): void {
+export function createPhaseDiagram(container: HTMLElement, store: Store): PlotHandle {
   const root = select(container).classed("phase-diagram", true);
   const canvas = root.append("canvas").attr("class", "regions").attr("aria-hidden", "true");
   // A group, not an image: the children of role="img" are presentational, which would hide the
@@ -159,8 +170,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     else pointLabelLayer.selectAll("*").remove();
   };
 
-  const drawAll = () => {
-    const state = store.state;
+  const drawAll = (state: Readonly<State> = store.state) => {
     svg.attr(
       "aria-label",
       state.mode === "alpha" ? "T-X phase diagram" : "T-X phase diagram with a horizontal cut",
@@ -204,7 +214,7 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
 
   // While the window is being resized, the raster and the labels are redone at most every
   // RESIZE_MS, and once more at the end; the slice panel keeps the same pace.
-  const redraw = throttle(drawAll, RESIZE_MS);
+  const redraw = throttle(() => drawAll(), RESIZE_MS);
   attachPanel(container, store, (next) => {
     size = next;
     redraw();
@@ -227,4 +237,6 @@ export function createPhaseDiagram(container: HTMLElement, store: Store): void {
     drawCut(state, size);
     drawLever(state, size);
   });
+
+  return { svg: svgNode, size: () => size, draw: drawAll };
 }

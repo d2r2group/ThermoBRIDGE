@@ -3,6 +3,8 @@
 // below and just above each event, and its tie lines at a few temperatures. scripts/crosscheck.py
 // reads this and checks it against pycalphad (plan §9 phases 2 and 12). Run from the project directory:
 //   node scripts/exportSystems.mjs > systems.json
+// With `--system <file.json>`, a system file that Export writes (or a TDB export's ZIP holds), it
+// writes that system alone, with its name as its id (§9 phase 20).
 
 // @ts-check
 
@@ -26,6 +28,8 @@ const { scan } = await load("/src/physics/events.ts");
 const { sliceHull } = await load("/src/physics/hull.ts");
 /** @type {typeof import("../src/physics/gibbs")} */
 const { criticalT } = await load("/src/physics/gibbs.ts");
+/** @type {typeof import("../src/ui/systemFile")} */
+const { parseSystemFile } = await load("/src/ui/systemFile.ts");
 
 /**
  * The event checks sit this far below and above each event, K: 0.5 K, and 10 K at a critical
@@ -62,7 +66,23 @@ function checkX(e) {
   ).X;
 }
 
-const systems = [
+/**
+ * The system of the file after `--system`, or null without one.
+ * @returns {Promise<{ id: string, params: import("../src/physics/gibbs").Params, window: import("../src/physics/plotWindow").PlotWindow }[] | null>}
+ */
+async function fileSystem() {
+  const at = process.argv.indexOf("--system");
+  if (at < 0) return null;
+  const { readFile } = await import("node:fs/promises");
+  const path = process.argv[at + 1];
+  if (!path) throw new Error("--system needs a system file");
+  const parsed = parseSystemFile(await readFile(path, "utf8"));
+  if (!parsed.ok) throw new Error(`${path} is not a system file: ${parsed.problem}`);
+  const { name, params, window } = parsed.value;
+  return [{ id: name, params, window }];
+}
+
+const systems = (await fileSystem()) ?? [
   ...Object.entries(PANELS).map(([id, s]) => ({ id, ...s })),
   ...PRESETS.filter((p) => !(p.id in PANELS) && p.group !== "compound").map((p) => ({
     id: p.id,

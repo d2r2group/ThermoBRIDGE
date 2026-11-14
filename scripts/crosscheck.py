@@ -18,11 +18,19 @@ It is a development check, run by hand and not in CI. From the ThermoBRIDGE dire
     uvx --with pycalphad python scripts/crosscheck.py
 
 It exits with status 1 if any check fails.
+
+With `--tdb <name>.tdb`, a database that the app's TDB export wrote (plan §9 phase 20), it checks
+that file instead, against the app's results for the system file `<name>.json` beside it, which
+the export's ZIP holds too. The elements are read from the file's header:
+
+    uvx --with pycalphad python scripts/crosscheck.py --tdb Eutectic.tdb
 """
 
+import argparse
 import datetime
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import warnings
@@ -33,7 +41,8 @@ from pycalphad import Database, equilibrium
 from pycalphad import variables as v
 
 HERE = pathlib.Path(__file__).resolve().parent
-COMPONENTS = ["A", "B", "VA"]
+# The element names of the cross-check's own databases; an exported one names its own.
+ELEMENTS = {"A": "A", "B": "B"}
 SHORT = {"LIQUID": "L", "SOLID": "S", "GAMMA": "C"}
 # The gas constant, J/(mol K), as in src/physics/gibbs.ts.
 R = 8.314462618
@@ -104,12 +113,13 @@ PARAMETER L(SOLID,A,B;0) 1 {params["alphaS"] * 1000!r}; 10000 N !
 """ + gamma(params)
 
 
-def phase_sets(db, names, xs, T):
+def phase_sets(db, names, xs, T, elements=ELEMENTS):
     """For each X at T: the stable phases as (short name, X_B) pairs, X increasing."""
-    eq = equilibrium(db, COMPONENTS, names, {v.X("B"): xs, v.T: T, v.P: 101325, v.N: 1})
+    a, b = elements["A"], elements["B"]
+    eq = equilibrium(db, [a, b, "VA"], names, {v.X(b): xs, v.T: T, v.P: 101325, v.N: 1})
     names = eq.Phase.values.reshape(len(xs), -1)
     amounts = eq.NP.values.reshape(len(xs), -1)
-    comps = eq.X.sel(component="B").values.reshape(len(xs), -1)
+    comps = eq.X.sel(component=b).values.reshape(len(xs), -1)
     out = []
     for row_names, row_np, row_x in zip(names, amounts, comps):
         found = []
@@ -124,8 +134,20 @@ def phase_sets(db, names, xs, T):
     return out
 
 
-def check(system):
-    db = Database(tdb(system["params"]))
+def exported_elements(text):
+    """The element of each component, from the header of an exported database."""
+    found = dict(
+        (m.group(2), m.group(1))
+        for m in re.finditer(r"^\$ Element (\S+) is component ([AB]) ", text, re.M)
+    )
+    if set(found) != {"A", "B"}:
+        sys.exit("the file's header does not name the elements of components A and B")
+    return found
+
+
+def check(system, text=None):
+    db = Database(text if text is not None else tdb(system["params"]))
+    elements = exported_elements(text) if text is not None else ELEMENTS
     names = phases(system["params"])
     failures = []
     notes = []
@@ -134,7 +156,7 @@ def check(system):
         for side in ("below", "above"):
 
             def agrees(point):
-                [got] = phase_sets(db, names, [e["X"]], point["T"])
+                [got] = phase_sets(db, names, [e["X"]], point["T"], elements)
                 return sorted(p for p, _ in got) == sorted(point["phases"]), got
 
             ok, got = agrees(e[side])
@@ -158,7 +180,7 @@ def check(system):
         if not row["ties"]:
             continue
         mids = [0.5 * (t[0]["X"] + t[1]["X"]) for t in row["ties"]]
-        for tie, got in zip(row["ties"], phase_sets(db, names, mids, row["T"])):
+        for tie, got in zip(row["ties"], phase_sets(db, names, mids, row["T"], elements)):
             want = [(e["phase"], e["X"]) for e in tie]
             ties += 1
             if [p for p, _ in got] != [p for p, _ in want]:
@@ -174,8 +196,16 @@ def check(system):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--tdb", type=pathlib.Path, help="a TDB file exported by the app")
+    args = parser.parse_args()
+    extra = []
+    text = None
+    if args.tdb:
+        text = args.tdb.read_text(encoding="utf-8")
+        extra = ["--system", str(args.tdb.with_suffix(".json").resolve())]
     exported = subprocess.run(
-        ["node", str(HERE / "exportSystems.mjs")],
+        ["node", str(HERE / "exportSystems.mjs"), *extra],
         check=True,
         capture_output=True,
         text=True,
@@ -188,7 +218,7 @@ def main():
     for system in systems:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            ok, total, ties, worst, failures, notes = check(system)
+            ok, total, ties, worst, failures, notes = check(system, text)
         print(f"{system['id']:<8}{f'{ok}/{total}':>10}{ties:>11}{worst:>11.1e}")
         for n in notes:
             print(f"    note {n}")

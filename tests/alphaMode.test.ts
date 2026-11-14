@@ -321,6 +321,44 @@ describe("Store.setMode", () => {
     expect(matchPreset(s.params, s.window, s.components)).toBeNull();
   });
 
+  it("gives with dgState what leaving would give, without leaving (plan §9 phase 20)", () => {
+    const cases: [string, (store: Store) => void][] = [
+      ["nothing moved", () => {}],
+      [
+        "moved",
+        (store) =>
+          store.setSystem(alphaSystem({ alphaS: 15, alphaL: 10, TmB: 1200, compound: null })),
+      ],
+      [
+        "at a preset",
+        (store) =>
+          store.setSystem(alphaSystem({ alphaS: 0, alphaL: 10, TmB: 1200, compound: null })),
+      ],
+    ];
+    for (const [, move] of cases) {
+      const store = new Store(preset("c"));
+      store.setShowLever(true);
+      store.setX0(0.3);
+      expect(store.dgState()).toBe(store.state);
+      store.setMode("alpha");
+      move(store);
+      const before = store.state;
+      const seen: unknown[] = [];
+      store.subscribe((state) => seen.push(state));
+      const view = store.dgState();
+      expect(store.state).toBe(before);
+      expect(seen).toEqual([]);
+      store.setMode("dg");
+      const { diagram, atCut, metastableAtCut, ...rest } = store.state;
+      const { diagram: d, atCut: a, metastableAtCut: m, ...viewRest } = view;
+      expect(viewRest).toEqual(rest);
+      expect(d.scan.params).toEqual(diagram.scan.params);
+      expect(d.scan.window).toEqual(diagram.scan.window);
+      expect(a).toEqual(atCut);
+      expect(m).toEqual(metastableAtCut);
+    }
+  });
+
   it("takes a preset, with its name and window, when the α mode left off at its parameters", () => {
     const store = new Store(preset("h"));
     store.setMode("alpha");

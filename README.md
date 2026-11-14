@@ -68,6 +68,12 @@ Details has the key.
 - **Export** / **Import** save and load a system as JSON; **Share** makes a
   link that opens the same system, cut and lever (e.g. `#h;T,700;X,.3`), or,
   in the α mode, the same system in the α mode (`#h;A`).
+- **TDB** and **Figure**, above the Parameters panel, save a ZIP with the
+  system's JSON file and the system as a CALPHAD database (checked with
+  pycalphad), or the plots as SVG or PNG images: both together and each on its
+  own, in the light theme. **Series of cuts** saves the figures at each distinct
+  cut, from high to low T. In the α mode they export what the Δg^M mode would
+  show.
 - **Model Details**, in the footer, shows the model's equations, the presets,
   the limits and the numerics.
 
@@ -124,6 +130,7 @@ npm run typecheck     # tsc --noEmit
 npm run math          # re-render the Model Details formulas after editing them
 npm run mockup        # re-render assets/mockup.png (build and preview first)
 uvx --with pycalphad python scripts/crosscheck.py   # cross-check against pycalphad
+uvx --with pycalphad python scripts/crosscheck.py --tdb Eutectic.tdb   # check an exported TDB
 ```
 
 The first Playwright run needs `npx playwright install chromium`. The physics

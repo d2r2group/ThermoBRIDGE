@@ -53,6 +53,7 @@ import { joinGuides, joinMarkers } from "./marks";
 import { attachPanel, fitSvg, placeYLabel } from "./panel";
 import { CHECKER_CELL, DIAMOND_KINDS, fieldKind, KIND_COLOURS, TWO_PHASE_KINDS } from "./regions";
 import { RESIZE_MS, throttle } from "./schedule";
+import type { PlotHandle } from "./diagram/phaseDiagram";
 import type { State, Store } from "./state";
 
 const MARGIN = SLICE_MARGIN;
@@ -126,8 +127,16 @@ function appendHatchPatterns(
   }
 }
 
+/**
+ * The slice panel's handle for a figure export (plan §9 phase 20); `drawn` is the state it last
+ * drew, which the α mode leaves on its hidden panel.
+ */
+export interface SliceHandle extends PlotHandle {
+  drawn(): Readonly<State>;
+}
+
 /** Builds the slice panel inside `container` and keeps it in sync with `store`. */
-export function createSlicePanel(container: HTMLElement, store: Store): void {
+export function createSlicePanel(container: HTMLElement, store: Store): SliceHandle {
   const root = select(container).classed("slice-panel", true);
   const svg = root.append("svg").attr("role", "img");
   const uid = Math.random().toString(36).slice(2);
@@ -175,9 +184,11 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
   let size: PlotSize = { width: 0, height: 0 };
   let xs: number[] = [];
   let y = scaleLinear();
+  let drawn: Readonly<State> = store.state;
 
   /** The mixture at X₀ on the envelope (plan §4 item 7), from the top of the SVG down to it. */
   const drawLever = (state: Readonly<State>) => {
+    drawn = state;
     lever.attr("display", state.showLever ? null : "none");
     if (!state.showLever) return;
     const l = leverOf(state);
@@ -189,6 +200,7 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
 
   // The g axis follows the cut, so it is redrawn with the curves.
   const drawSlice = (state: Readonly<State>) => {
+    drawn = state;
     const { params, cut, atCut, metastableAtCut } = state;
     const s = slice(params, cut, atCut, xs);
     y = scaleLinear().domain(gDomain(s.min)).range([size.height, 0]);
@@ -328,7 +340,7 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
     drawLever(state);
   };
 
-  const drawAll = () => {
+  const drawAll = (state: Readonly<State> = store.state) => {
     fitSvg(svg.node() as SVGSVGElement, size, MARGIN);
     clipRect.attr("width", size.width).attr("height", size.height);
     xs = sliceXs(size.width);
@@ -337,7 +349,7 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
       .attr("transform", `translate(${MARGIN.left},${MARGIN.top})`)
       .call(axisTop(x).tickValues(xTicks(size.width)).tickSizeOuter(0));
     frame.attr("d", frameBottomRight(size));
-    drawSlice(store.state);
+    drawSlice(state);
   };
 
   // The α mode hides the panel (styles/plots.css) and leaves it undrawn while it moves through the
@@ -356,9 +368,16 @@ export function createSlicePanel(container: HTMLElement, store: Store): void {
   });
 
   // At the diagram's pace while the window is being resized, so that the guides stay in line.
-  const redraw = throttle(drawAll, RESIZE_MS);
+  const redraw = throttle(() => drawAll(), RESIZE_MS);
   attachPanel(container, store, (next) => {
     size = next;
     redraw();
   });
+
+  return {
+    svg: svg.node() as SVGSVGElement,
+    size: () => size,
+    draw: drawAll,
+    drawn: () => drawn,
+  };
 }
