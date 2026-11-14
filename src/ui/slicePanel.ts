@@ -203,7 +203,7 @@ export function createSlicePanel(container: HTMLElement, store: Store): SliceHan
     drawn = state;
     const { params, cut, atCut, metastableAtCut } = state;
     const s = slice(params, cut, atCut, xs);
-    y = scaleLinear().domain(gDomain(s.min)).range([size.height, 0]);
+    y = scaleLinear().domain(gDomain(s.min, s.barrier)).range([size.height, 0]);
     yAxis.attr("transform", `translate(${MARGIN.left},${MARGIN.top})`).call(
       axisLeft(y)
         .ticks(Math.max(2, Math.floor(size.height / TICK_SPACING)))

@@ -93,7 +93,8 @@ compound) or as a third regular solution with $\alpha_\gamma < 0$ (range). The
 stable state is the lower convex envelope: phases in equilibrium share a
 tangent, and three share one at an invariant. The panel plots
 $\Delta g^{M,r} = g - r$, with $r$ the line through the lower pure phase at each
-end, which keeps every tangent, on an axis fitted to $T^*$.
+end, which keeps every tangent, on an axis fitted to $T^*$ and tall enough to
+show a solid miscibility gap's barrier.
 
 Every preset has $T_{\mathrm{m},A} = 800$ K and
 $\Delta s_A = \Delta s_B = 10$ J/(mol·K):

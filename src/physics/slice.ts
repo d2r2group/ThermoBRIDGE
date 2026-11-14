@@ -1,8 +1,9 @@
 // The slice at the cut (plan §2, §4 item 2): g_l and g_s (and a compound γ with a range) at T*
 // minus the straight line r through the stable pure components, split into their stable and
 // non-stable runs, the common tangents with their touching points, the envelope under which the
-// panel is shaded, and the g axis fitted to it; a line compound's point (§9 phase 13); and the
-// points of the metastable tangents and the spinodals on the same curves. Energies are in kJ/mol.
+// panel is shaded, and the g axis fitted to it and to the solid's barrier; a line compound's
+// point (§9 phase 13); and the points of the metastable tangents and the spinodals on the same
+// curves. Energies are in kJ/mol.
 
 import {
   COMPOUND,
@@ -10,6 +11,7 @@ import {
   fusionGibbs,
   phaseG,
   phases as phasesOf,
+  SOLID,
   type Curve,
   type Params,
   type Phase,
@@ -54,6 +56,8 @@ export interface Slice {
   shades: Shade[];
   /** The lowest point m of the envelope, ≤ 0. */
   min: number;
+  /** The height b ≥ 0 of the solid's curve above its own chord: a miscibility gap's barrier. */
+  barrier: number;
 }
 
 /** g − r at X on the curve of each phase at T, for points off the stable envelope. */
@@ -201,7 +205,18 @@ export function slice(
 
   let min = 0;
   for (const s of shades) for (const p of s.points) min = Math.min(min, p.g);
-  return { runs, tangents, shades, min };
+  // The solid's hump above its own chord: r itself at low T, where the hump is the gap's barrier,
+  // and 0 without a gap, however far the metastable solid lies above r.
+  let barrier = 0;
+  const solid = byId.get(SOLID);
+  if (solid) {
+    const [ga, gb] = [rel(solid, 0), rel(solid, 1)];
+    for (const r of runs) {
+      if (r.phase !== SOLID) continue;
+      for (const p of r.points) barrier = Math.max(barrier, p.g - (ga + (gb - ga) * p.X));
+    }
+  }
+  return { runs, tangents, shades, min, barrier };
 }
 
 /** The index of the first of the sorted `xs` above `X` (xs.length if none). */
@@ -224,13 +239,22 @@ function edgesOf(f: Field): number[] {
 /** The least half-depth of the g axis, kJ/mol (plan §4 item 2). */
 export const MIN_DEPTH = 0.2;
 
+/** The most the g axis rises above 0, in half-depths d (plan §4 item 2). */
+export const MAX_RISE = 20;
+
+/** The least margin below m and above b, as a share of the range b − m they frame. */
+export const MARGIN_SHARE = 0.06;
+
 /**
- * The g axis for an envelope whose lowest point is m (plan §4 item 2): with
- * d = max(|m|, 0.2 kJ/mol), from m − 0.1 d to 0.5 d.
+ * The g axis for an envelope whose lowest point is m, with the solid's barrier b
+ * (plan §4 item 2): with d = max(|m|, 0.2 kJ/mol), b capped at 20 d, and the margin
+ * p = max(0.1 d, 0.06 (b − m)), from m − p to b + p, held between 0.5 d and 20 d.
  */
-export function gDomain(min: number): [number, number] {
+export function gDomain(min: number, barrier = 0): [number, number] {
   const d = Math.max(Math.abs(min), MIN_DEPTH);
-  return [min - 0.1 * d, 0.5 * d];
+  const cap = MAX_RISE * d;
+  const margin = Math.max(0.1 * d, MARGIN_SHARE * (Math.min(barrier, cap) - min));
+  return [min - margin, Math.min(Math.max(0.5 * d, barrier + margin), cap)];
 }
 
 /** The X of each touching point of the stable tangents, once each, X increasing. */

@@ -81,7 +81,7 @@ export const LEVER_KNOB_R = 7;
 /** How near a drag pulls the α knob onto a grid preset, CSS px. */
 export const PRESET_MAGNET_PX = 6;
 /** How near a drag pulls the cut onto a marked point's temperature, CSS px: subtler. */
-export const CUT_MAGNET_PX = 3;
+export const CUT_MAGNET_PX = 2;
 /** The touching points' marker radius, CSS px (the event markers' sizes are in eventMarkers.ts). */
 export const MARKER_R = 3.5;
 
