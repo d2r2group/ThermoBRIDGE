@@ -46,10 +46,7 @@ test("the footer comes after the plots and the controls column, with the link, t
   expect(globeBox.x + globeBox.width).toBeLessThanOrEqual(text);
   // The source on GitHub, after the group's site, with the GitHub mark, as in pTerrain.
   const github = footer.getByRole("link", { name: "GitHub" });
-  await expect(github).toHaveAttribute(
-    "href",
-    "https://github.com/d2r2group/ThermoBRIDGE",
-  );
+  await expect(github).toHaveAttribute("href", "https://github.com/d2r2group/ThermoBRIDGE");
   await expect(github).toHaveAttribute("target", "_blank");
   await expect(github).toHaveAttribute("rel", "noopener noreferrer");
   await expect(github.locator("svg.icon")).toHaveAttribute("aria-hidden", "true");
