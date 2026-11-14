@@ -76,12 +76,14 @@ describe("CI", () => {
   it("deploys dist/ to GitHub Pages only from pushes to main, after the checks pass", () => {
     const onMain = "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'";
     expect(workflow).toMatch(/upload-pages-artifact@v\d+\n\s+if: .*\n\s+with:\n\s+path: dist\//);
-    expect(workflow).toMatch(/deploy:\n\s+needs: check\n/);
+    expect(workflow).toMatch(/deploy:\n\s+needs: \[check, e2e\]\n/);
     expect(workflow.split(onMain)).toHaveLength(3);
     expect(workflow).toContain("uses: actions/deploy-pages@");
   });
 
-  it("runs the e2e tests fully parallel", () => {
+  it("runs the e2e tests fully parallel, sharded across jobs", () => {
     expect(read("playwright.config.ts")).toMatch(/^\s*fullyParallel: true,$/m);
+    const shards = /shard: \[([\d, ]+)\]/.exec(workflow)![1]!.split(", ");
+    expect(workflow).toContain(`--shard=\${{ matrix.shard }}/${shards.length}`);
   });
 });
