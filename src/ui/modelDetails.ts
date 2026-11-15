@@ -267,7 +267,7 @@ export function modelDetailsHtml(): string {
 </section>
 <section>
   <h3>Exporting</h3>
-  <p><i>TDB</i> saves the system as a CALPHAD database in J/mol: the pure liquids are the
+  <p><i>Export TDB</i> saves the system as a CALPHAD database in J/mol: the pure liquids are the
   reference, the pure solids lie at ${tex`G = -\Delta h_i + \Delta s_i T`} with
   ${tex`\Delta h_i = T_{\mathrm{m},i}\,\Delta s_i`}, and each ${tex`\alpha`} is the zeroth
   Redlich–Kister term ${tex`L(\varphi, \mathrm{A}, \mathrm{B}; 0)`} of LIQUID or SOLID, each
@@ -277,7 +277,7 @@ export function modelDetailsHtml(): string {
   ${tex`\Delta h_\mathrm{f} - T\,\Delta s_\mathrm{f}`} below them at
   ${tex`X_\mathrm{c}`}. The elements are named from the components (upper-cased, at most two
   letters, else A and B); the file's header maps them back and holds the share link. The file
-  was checked with pycalphad; other programs have not been tried. <i>Figure</i> saves three SVG
+  was checked with pycalphad; other programs have not been tried. <i>Export figure(s)</i> saves three SVG
   or PNG images in the light theme: both plots, at the plot size chosen in the menu, the
   diagram alone with its
   ${tex`X_\mathrm{B}`} numbers, and the slice panel alone with its ${tex`X_\mathrm{B}`} axis

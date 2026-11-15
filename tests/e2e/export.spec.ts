@@ -76,7 +76,7 @@ async function exportFigure(
 async function exportJson(page: Page) {
   await page.locator(".parameters summary").click();
   const { bytes } = await downloaded(page, () =>
-    page.getByRole("button", { name: "Export" }).click(),
+    page.getByRole("button", { name: "Export", exact: true }).click(),
   );
   await page.locator(".parameters summary").click();
   return new TextDecoder().decode(bytes);

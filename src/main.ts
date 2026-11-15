@@ -50,8 +50,8 @@ probe.remove();
 // the plots, fitted to the window's height, with the α mode's pad over the lower one's box (phase
 // 17), and a column beside them where it has 19rem, or below them otherwise: the cut input (in the
 // α mode, the α values in its place), the lever readout (while the lever rule is on), the readout
-// (for screen readers only), the export row (TDB and Figure, §9 phase 20) and the Parameters
-// panel. The footer follows, after <main>.
+// (for screen readers only), the export row (Export TDB and Export figure(s), §9 phase 20) and
+// the Parameters panel. The footer follows, after <main>.
 const header = document.createElement("header");
 const mainRow = document.createElement("div");
 mainRow.className = "main-row";

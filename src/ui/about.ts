@@ -163,14 +163,14 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
       {
         selector: ".export-row",
         context: "",
-        name: "TDB and Figure",
+        name: "Export TDB and Export figure(s)",
         text:
-          "Save a ZIP with the system's JSON file and, from TDB, the system as a CALPHAD " +
-          "database or, from Figure, the plots as SVG or PNG images: both plots together and " +
-          "each on its own, in the light theme, at the plot size chosen in Figure's menu, and a " +
+          "Save a ZIP with the system's JSON file and, from Export TDB, the system as a CALPHAD " +
+          "database or, from Export figure(s), the plots as SVG or PNG images: both plots together and " +
+          "each on its own, in the light theme, at the plot size chosen in its menu, and a " +
           "PNG at the DPI chosen there. In the <i>α</i> mode they export the system as " +
           "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>All unique cuts</i> chosen in " +
-          "Figure's menu, in place of the current cut, the images are saved at each distinct cut, from high to low " +
+          "that menu, in place of the current cut, the images are saved at each distinct cut, from high to low " +
           "<i>T</i>: one in each band of the same phases, at its middle, and one at each invariant.",
       },
       {

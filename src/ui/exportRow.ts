@@ -1,10 +1,10 @@
-// The export row above the Parameters panel (plan §9 phases 20–21): TDB saves the system as a
-// CALPHAD database, Figure the plots as SVG or PNG images, each as one ZIP with the system's JSON
+// The export row above the Parameters panel (plan §9 phases 20–21): Export TDB saves the system
+// as a CALPHAD database, Export figure(s) the plots as SVG or PNG images, each as one ZIP with the system's JSON
 // file. Outside the panel's form, so both work with the panel closed and in the α mode, which
 // exports its system as the Δg^M mode would show it (`Store.dgState`). Figure's menu holds the
-// cuts (the current cut, or all unique cuts: each cut of `seriesCuts`, from the top of the window
-// down), the plot size and the PNG's DPI; a DPI too large for the figure is lowered, and a note
-// under Figure says so.
+// cuts (the current cut, named by its T, or all unique cuts: each cut of `seriesCuts`, from the
+// top of the window down), the plot size and the PNG's DPI; a DPI too large for the figure is
+// lowered, and a note under Figure says so.
 
 import { report, setLabel } from "./buttons";
 import { seriesCuts, seriesName } from "./cutSeries";
@@ -18,8 +18,9 @@ import {
   type FigureFormat,
   type FigurePlots,
 } from "./figure";
+import { formatInvariantT } from "./format";
 import type { PlotSize } from "./geometry";
-import { DATABASE, PICTURE } from "./icons";
+import { DATABASE, DOWNLOAD, PICTURE } from "./icons";
 import { DEFAULT_DPI, DPIS, fittingDpi } from "./png";
 import { stateAtCut, type State, type Store } from "./state";
 import { appliedSystem, fileName, toLink, toSystemFile } from "./systemFile";
@@ -152,16 +153,18 @@ export function createExportRow(
   const tdb = document.createElement("button");
   tdb.type = "button";
   tdb.className = "btn tdb";
-  setLabel(tdb, DATABASE, "TDB");
-  tdb.title = "Save the applied system as a CALPHAD database, with its JSON file";
+  setLabel(tdb, DATABASE, "Export TDB");
+  tdb.title = "Export the applied system as a CALPHAD database, with its JSON file";
 
   const box = document.createElement("div");
   box.className = "figure-box";
   const figure = document.createElement("button");
   figure.type = "button";
   figure.className = "btn figure";
-  setLabel(figure, PICTURE, "Figure");
-  figure.title = "Save the plots as SVG or PNG images, with the system's JSON file";
+  setLabel(figure, PICTURE, "Export figure(s)…");
+  figure.title =
+    "Choose the cuts, size and format, then export the plots as SVG or PNG images, with the " +
+    "system's JSON file";
   figure.setAttribute("aria-haspopup", "menu");
   figure.setAttribute("aria-expanded", "false");
   const menu = document.createElement("div");
@@ -222,7 +225,7 @@ export function createExportRow(
     item.type = "button";
     item.setAttribute("role", "menuitem");
     item.dataset.format = format;
-    item.textContent = text;
+    setLabel(item, DOWNLOAD, text);
     item.title = title;
     item.tabIndex = -1;
     menu.append(item);
@@ -248,6 +251,9 @@ export function createExportRow(
   };
   const open = () => {
     hideNote();
+    // Non-breaking spaces, so that a narrow menu wraps it as "Current cut" over "(1320 K)".
+    const T = formatInvariantT(store.dgState().cut).replace(" ", "\u00a0");
+    currentCut!.textContent = `Current\u00a0cut (${T})`;
     menu.hidden = false;
     figure.setAttribute("aria-expanded", "true");
     items[0]!.focus();

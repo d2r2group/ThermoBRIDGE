@@ -290,6 +290,11 @@
 /* The export row above the panel (plan §9 phase 20): TDB and Figure share its width, and Figure's
    menu of formats opens under it. */
 .export-row {
+  /* A container, for the narrow rules below; lifted, as containment makes it a stacking
+     context, so that Figure's menu stays over the panel after it. */
+  container-type: inline-size;
+  position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
@@ -313,6 +318,20 @@
   flex: none;
 }
 
+/* Too narrow for an icon beside "Export figure(s)…": the labels alone, and on the narrowest
+   phones less padding. */
+@container (max-width: 23rem) {
+  .export-row .btn .icon {
+    display: none;
+  }
+}
+
+@container (max-width: 19rem) {
+  .export-row .btn {
+    padding: 0 0.25rem;
+  }
+}
+
 .figure-box {
   position: relative;
 }
@@ -321,9 +340,9 @@
   position: absolute;
   top: calc(100% + 0.25rem);
   right: 0;
-  /* At least the button's width, and room for three plot sizes in a row, growing leftwards. */
+  /* At least the button's width, and room for the two cuts in a row, growing leftwards. */
   box-sizing: border-box;
-  width: max(100%, min(17rem, calc(100vw - 2rem)));
+  width: max(100%, min(18.5rem, calc(100vw - 2rem)));
   z-index: 1;
   display: grid;
   padding: 0.25rem;
@@ -354,8 +373,14 @@
   border-bottom: 1px solid var(--muted);
 }
 
+/* Sized to their text, as Current cut also names its T, which wraps under it if the menu is too
+   narrow. */
 .figure-menu .choice.cuts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, auto);
+}
+
+.figure-menu .choice.cuts button {
+  white-space: normal;
 }
 
 .figure-menu .choice::before {

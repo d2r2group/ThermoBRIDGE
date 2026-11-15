@@ -1,5 +1,5 @@
 // The labelled icon buttons of the Parameters panel, the export row and the main row (Import,
-// Export, TDB, Figure, Share), and the greying out of a control that the α mode does not use.
+// Export, Export TDB, Export figure(s), Share), and the greying out of a control that the α mode does not use.
 
 import { icon } from "./icons";
 

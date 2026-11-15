@@ -69,7 +69,7 @@ Details has the key.
 - **Export** / **Import** save and load a system as JSON; **Share** makes a
   link that opens the same system, cut and lever (e.g. `#h;T,700;X,.3`), or,
   in the α mode, the same system in the α mode (`#h;A`).
-- **TDB** and **Figure**, above the Parameters panel, save a ZIP with the
+- **Export TDB** and **Export figure(s)**, above the Parameters panel, save a ZIP with the
   system's JSON file and the system as a CALPHAD database (checked with
   pycalphad), or the plots as SVG or PNG images: both together and each on its
   own, in the light theme, at one of three plot sizes and, for PNG, at 150, 300
