@@ -2,7 +2,7 @@
 // as a CALPHAD database, Export figure(s) the plots as SVG or PNG images, each as one ZIP with the system's JSON
 // file. Outside the panel's form, so both work with the panel closed and in the α mode, which
 // exports its system as the Δg^M mode would show it (`Store.dgState`). Figure's menu holds the
-// cuts (the current cut, named by its T, or all unique cuts: each cut of `seriesCuts`, from the
+// cuts (the current cut, named by its T, or the N unique cuts: each cut of `seriesCuts`, from the
 // top of the window down), the plot size and the PNG's DPI; a DPI too large for the figure is
 // lowered, and a note under Figure says so.
 
@@ -200,10 +200,11 @@ export function createExportRow(
       chosen: () => radios.findIndex((r) => r.getAttribute("aria-checked") === "true"),
     };
   };
-  // All unique cuts saves a series (`seriesCuts`); the current cut, the default, saves the one.
-  const cuts = radioGroup("cuts", "Cuts", ["All unique cuts", "Current cut"], 1);
-  const [allCuts, currentCut] = cuts.radios;
-  allCuts!.title =
+  // The unique cuts save a series (`seriesCuts`), counted on opening; the current cut, the
+  // default, saves the one.
+  const cuts = radioGroup("cuts", "Cuts", ["Unique cuts", "Current cut"], 1);
+  const [uniqueCuts, currentCut] = cuts.radios;
+  uniqueCuts!.title =
     "Save the images at each distinct cut, from high to low T: one in each band of the same " +
     "phases, and one at each invariant";
   currentCut!.title = "Save the images at the current cut";
@@ -251,8 +252,11 @@ export function createExportRow(
   };
   const open = () => {
     hideNote();
+    const dg = store.dgState();
+    const n = seriesCuts(dg.diagram.scan.events, dg.window).length;
+    uniqueCuts!.textContent = `${n} unique ${n === 1 ? "cut" : "cuts"}`;
     // Non-breaking spaces, so that a narrow menu wraps it as "Current cut" over "(1320 K)".
-    const T = formatInvariantT(store.dgState().cut).replace(" ", "\u00a0");
+    const T = formatInvariantT(dg.cut).replace(" ", "\u00a0");
     currentCut!.textContent = `Current\u00a0cut (${T})`;
     menu.hidden = false;
     figure.setAttribute("aria-expanded", "true");

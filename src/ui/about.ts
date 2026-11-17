@@ -169,7 +169,7 @@ const SECTIONS: readonly { heading: string; keys: readonly Key[] }[] = [
           "database or, from Export figure(s), the plots as SVG or PNG images: both plots together and " +
           "each on its own, in the light theme, at the plot size chosen in its menu, and a " +
           "PNG at the DPI chosen there. In the <i>α</i> mode they export the system as " +
-          "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>All unique cuts</i> chosen in " +
+          "the Δ<i>g</i><sup>M</sup> mode would show it. With <i>N unique cuts</i> chosen in " +
           "that menu, in place of the current cut, the images are saved at each distinct cut, from high to low " +
           "<i>T</i>: one in each band of the same phases, at its middle, and one at each invariant.",
       },

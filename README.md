@@ -73,7 +73,7 @@ Details has the key.
   system's JSON file and the system as a CALPHAD database (checked with
   pycalphad), or the plots as SVG or PNG images: both together and each on its
   own, in the light theme, at one of three plot sizes and, for PNG, at 150, 300
-  or 600 DPI, at the current cut or, with **All unique cuts**, at each
+  or 600 DPI, at the current cut or, with **N unique cuts**, at each
   distinct cut, from high to low T. In the α mode they export what the Δg^M mode would
   show.
 - **Model Details**, in the footer, shows the model's equations, the presets,

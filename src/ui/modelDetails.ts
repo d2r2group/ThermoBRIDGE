@@ -285,7 +285,7 @@ export function modelDetailsHtml(): string {
   guide lines. The diagram's fields are vector paths, sharp at any zoom. The SVG names Lato and
   keeps its text as text; the PNG, at 150, 300 or 600 DPI, chosen in the menu (300 by
   default), at the SVG's printed size, embeds it. Each export is a ZIP with the system's JSON file, which Import opens; each file
-  carries the share link, with the cut and ${tex`X_0`}. With <i>All unique cuts</i> chosen in
+  carries the share link, with the cut and ${tex`X_0`}. With <i>N unique cuts</i> chosen in
   place of <i>Current cut</i>, the images are saved at each distinct cut, from the top of the window down: one in the middle
   of each band of temperatures between the melting, critical and congruent points and the
   invariants, over which the phases along the cut stay the same, and one at each invariant. In the α mode both export the system

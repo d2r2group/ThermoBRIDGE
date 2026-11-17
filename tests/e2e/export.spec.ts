@@ -62,7 +62,7 @@ async function exportFigure(
 ) {
   await figureButton(page).click();
   await page
-    .getByRole("menuitemradio", { name: series ? "All unique cuts" : "Current cut" })
+    .getByRole("menuitemradio", { name: series ? / unique cuts?$/ : "Current cut" })
     .click();
   if (size) await page.getByRole("menuitemradio", { name: size }).click();
   if (dpi) await page.getByRole("menuitemradio", { name: dpi }).click();
@@ -319,6 +319,10 @@ test("a series saves the three images at each distinct cut, high to low, and lea
     ),
     "Eutectic.json",
   ]);
+  // The menu counted the cuts the series saves.
+  await expect(page.locator(".figure-menu .cuts [role=menuitemradio]").first()).toHaveText(
+    `${stems.length} unique cuts`,
+  );
   // Each cut's images carry the link to that cut, with X₀ since the lever rule is on.
   const links = entries
     .filter((e) => e.name.startsWith("Eutectic-diagram-"))
@@ -505,7 +509,7 @@ test("the Figure menu opens from the keyboard and closes on Escape; axe finds no
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menu", { name: "Figure format" })).toBeVisible();
   await expect(figureButton(page)).toHaveAttribute("aria-expanded", "true");
-  const all = page.getByRole("menuitemradio", { name: "All unique cuts" });
+  const all = page.getByRole("menuitemradio", { name: /^\d+ unique cuts?$/ });
   const current = page.getByRole("menuitemradio", { name: "Current cut" });
   await expect(all).toBeFocused();
   await expect(all).toHaveAttribute("aria-checked", "false");
