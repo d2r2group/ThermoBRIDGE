@@ -288,7 +288,8 @@ export function modelDetailsHtml(): string {
   carries the share link, with the cut and ${tex`X_0`}. With <i>N unique cuts</i> chosen in
   place of <i>Current cut</i>, the images are saved at each distinct cut, from the top of the window down: one in the middle
   of each band of temperatures between the melting, critical and congruent points and the
-  invariants, over which the phases along the cut stay the same, and one at each invariant. In the α mode both export the system
+  invariants, over which the phases along the cut stay the same, and one at each invariant and
+  congruent point other than a pure component's melting point. In the α mode both export the system
   as the Δg<sup>M</sup> mode would show it.</p>
 </section>
 <section>

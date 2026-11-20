@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { invariantsOf, scan } from "../src/physics/events";
+import { INVARIANT_KINDS, scan } from "../src/physics/events";
 import { sliceHull } from "../src/physics/hull";
 import { compoundPreset, preset, PRESETS } from "../src/physics/presets";
 import { seriesCuts, seriesName } from "../src/ui/cutSeries";
 import { fieldKind } from "../src/ui/regions";
 
 // The cuts of a figure series (plan §9 phase 20): one in each band of the same fields, at its
-// middle, and one at each invariant, from the top of the window down.
+// middle, and one at each invariant and congruent transformation, from the top of the window down.
 
 /** The kinds of the fields along the cut at T. */
 const kinds = (id: Parameters<typeof preset>[0], T: number) =>
@@ -16,13 +16,7 @@ describe("seriesCuts", () => {
   it("gives (h) the liquid, L + β, both two-phase fields, the eutectic and α + β", () => {
     const { params, window } = preset("h");
     const cuts = seriesCuts(scan(params, window).events, window);
-    expect(cuts.map((c) => c.invariant?.kind ?? null)).toEqual([
-      null,
-      null,
-      null,
-      "eutectic",
-      null,
-    ]);
+    expect(cuts.map((c) => c.event?.kind ?? null)).toEqual([null, null, null, "eutectic", null]);
     const [liquid, first, both, eutectic, solid] = cuts as [
       (typeof cuts)[0],
       (typeof cuts)[0],
@@ -37,11 +31,11 @@ describe("seriesCuts", () => {
     // The middle of each band, in whole kelvin: (1500 + 1200) / 2, (1200 + 800) / 2.
     expect(liquid.T).toBe(1350);
     expect(first.T).toBe(1000);
-    expect(eutectic.T).toBe(eutectic.invariant!.T);
+    expect(eutectic.T).toBe(eutectic.event!.T);
   });
 
   it.each(PRESETS.map((p) => [p.id] as const))(
-    "%s: T decreasing, inside the window, each invariant once, and the bands' fields differ",
+    "%s: T decreasing, inside the window, each invariant and congruent point once, and the bands' fields differ",
     (id) => {
       const { params, window } = PRESETS.find((p) => p.id === id)!;
       const { events } = scan(params, window);
@@ -51,12 +45,18 @@ describe("seriesCuts", () => {
         expect(c.T).toBeGreaterThan(window.Tmin);
         expect(c.T).toBeLessThan(window.Tmax);
       }
-      const inside = invariantsOf(events).filter((e) => e.T > window.Tmin && e.T < window.Tmax);
-      expect(cuts.filter((c) => c.invariant).map((c) => c.invariant)).toEqual(
+      const inside = events.filter(
+        (e) =>
+          (["maximum", "minimum", "congruent"].includes(e.kind) ||
+            INVARIANT_KINDS.includes(e.kind)) &&
+          e.T > window.Tmin &&
+          e.T < window.Tmax,
+      );
+      expect(cuts.filter((c) => c.event).map((c) => c.event)).toEqual(
         [...inside].sort((a, b) => b.T - a.T),
       );
       // Two band cuts next to each other lie on either side of an event that changes the fields.
-      const bands = cuts.filter((c) => !c.invariant);
+      const bands = cuts.filter((c) => !c.event);
       for (let k = 1; k < bands.length; k++) {
         const [upper, lower] = [bands[k - 1]!.T, bands[k]!.T];
         expect(events.some((e) => e.T < upper && e.T > lower)).toBe(true);
@@ -92,21 +92,70 @@ describe("seriesCuts", () => {
       sigAbove: sig,
     });
     const cuts = seriesCuts([at("melting", "a"), at("eutectic", "b")], window);
-    expect(cuts.map((c) => [c.T, c.invariant?.kind ?? null])).toEqual([
+    expect(cuts.map((c) => [c.T, c.event?.kind ?? null])).toEqual([
       [1200, null],
       [900, "eutectic"],
       [600, null],
     ]);
   });
 
-  it("keeps c1's two eutectics and the bands around its melting peak", () => {
+  it("keeps c1's melting peak, its two eutectics and the bands around them", () => {
     const { params, window } = compoundPreset("c1");
     const cuts = seriesCuts(scan(params, window).events, window);
-    expect(cuts.filter((c) => c.invariant).map((c) => c.invariant!.kind)).toEqual([
+    expect(cuts.filter((c) => c.event).map((c) => c.event!.kind)).toEqual([
+      "maximum",
       "eutectic",
       "eutectic",
     ]);
-    expect(cuts).toHaveLength(8);
+    expect(cuts).toHaveLength(9);
+  });
+
+  it("cuts m's congruent minimum at its own T", () => {
+    const { params, window } = preset("m");
+    const { events } = scan(params, window);
+    const minimum = events.find((e) => e.kind === "minimum")!;
+    const cuts = seriesCuts(events, window);
+    expect(cuts.filter((c) => c.event).map((c) => c.event)).toEqual([minimum]);
+  });
+
+  it("gives no cut to a pure component's melting point or a congruent point at X = 0 or 1", () => {
+    const window = { Tmin: 300, Tmax: 1500 };
+    const at = (kind: "melting" | "maximum", T: number, X: number, sig: string) => ({
+      kind,
+      T,
+      points: [
+        { phase: "L", X },
+        { phase: "S", X },
+      ],
+      below: [],
+      above: [],
+      sigBelow: `${sig}-`,
+      sigAbove: sig,
+    });
+    const cuts = seriesCuts(
+      [at("melting", 700, 0, "a"), at("maximum", 900, 1, "b"), at("maximum", 1100, 0.5, "c")],
+      window,
+    );
+    expect(cuts.map((c) => [c.T, c.event?.kind ?? null])).toEqual([
+      [1300, null],
+      [1100, "maximum"],
+      [1000, null],
+      [800, null],
+      [500, null],
+    ]);
+  });
+
+  it("cuts c7's congruent transformation at its own T", () => {
+    const { params, window } = compoundPreset("c7");
+    const { events } = scan(params, window);
+    const congruent = events.find((e) => e.kind === "congruent")!;
+    const cuts = seriesCuts(events, window);
+    expect(cuts.filter((c) => c.event).map((c) => c.event)).toEqual([congruent]);
+    const k = cuts.findIndex((c) => c.event === congruent);
+    expect(cuts[k]!.T).toBe(congruent.T);
+    // The bands on either side keep their cuts.
+    expect(cuts[k - 1]!.event).toBeNull();
+    expect(cuts[k + 1]!.event).toBeNull();
   });
 });
 

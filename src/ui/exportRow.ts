@@ -206,7 +206,7 @@ export function createExportRow(
   const [uniqueCuts, currentCut] = cuts.radios;
   uniqueCuts!.title =
     "Save the images at each distinct cut, from high to low T: one in each band of the same " +
-    "phases, and one at each invariant";
+    "phases, and one at each invariant and congruent point (not a pure component's melting point)";
   currentCut!.title = "Save the images at the current cut";
   const sizes = radioGroup(
     "plot-size",
